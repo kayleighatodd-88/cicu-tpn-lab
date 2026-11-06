@@ -1,0 +1,1453 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TPN Lab — Check-off</title><meta name="theme-color" content="#333F48"><style>
+/* CICU TPN Lab — palette & type follow UT Austin / Dell Medical School guidance used in the other Pulse Lab sims:
+   burnt orange #BF5700, charcoal #333F48, limestone #D6D2C4, shade #9CADB7; Libre Franklin + Charis SIL. */
+:root{
+  color-scheme: light;
+  --room:#F5F4F0; --panel:#FFFFFF; --panel2:#F2F0EA; --ink:#333F48; --ink2:#5E6A72; --line:#D6D2C4;
+  --accent:#BF5700; --accent-ink:#FFFFFF; --charcoal:#333F48; --shade:#9CADB7;
+  --ok:#3F7A2E; --ok-bg:#E6EFDF; --warn:#8A5300; --warn-bg:#FCEBD2; --crit:#9B1C1C; --crit-bg:#F8DEDE; --info:#005F86; --info-bg:#DDEBF2;
+  --dex:#D98A1F; --aa:#3E7C9A; --il:#B5547A; --ent:#6C8F4E;
+  --font:'Libre Franklin',system-ui,Arial,sans-serif; --serif:'Charis SIL',Georgia,serif; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme: dark; --room:#1C2126; --panel:#252C32; --panel2:#2E363D; --ink:#ECEAE4; --ink2:#AEB6BC; --line:#3E4851;
+    --ok:#9CCB84; --ok-bg:#24331F; --warn:#F8B866; --warn-bg:#3A2C17; --crit:#F5A3A3; --crit-bg:#432225; --info:#6FB7D6; --info-bg:#1F3340; }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--room);color:var(--ink);font:15px/1.5 var(--font)}
+h1,h2,h3{font-family:var(--serif);line-height:1.25;margin:0 0 .5em}
+h1{font-size:1.7rem} h2{font-size:1.3rem} h3{font-size:1.05rem;margin-top:1.2em}
+a{color:var(--accent)}
+.top{background:var(--charcoal);color:#fff;border-bottom:4px solid var(--accent)}
+.top .in{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.brand{font-family:var(--serif);font-weight:700;font-size:1.15rem;color:#fff;text-decoration:none;margin-right:auto}
+.top nav{display:flex;gap:4px;flex-wrap:wrap}
+.top nav a{color:#fff;text-decoration:none;padding:7px 12px;border-radius:6px;font-weight:600;font-size:.92rem;opacity:.85}
+.top nav a:hover,.top nav a:focus-visible{opacity:1;background:rgba(255,255,255,.12);outline:none}
+.top nav a[aria-current=page]{background:var(--accent);opacity:1}
+main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card>h2:first-child,.card>h3:first-child{margin-top:0}
+.lede{color:var(--ink2);margin:.25em 0 1em}
+.muted{color:var(--ink2)} .small{font-size:.85rem} .mono{font-family:var(--mono)}
+.disclaimer{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:8px 12px;font-size:.85rem;margin:0 0 16px}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:999px;vertical-align:middle;margin-left:2px}
+.tag-s{background:var(--ok-bg);color:var(--ok)} .tag-c{background:var(--warn-bg);color:var(--warn)} .tag-d{background:var(--info-bg);color:var(--info)}
+
+/* buttons / inputs */
+button,.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;cursor:pointer;min-height:40px}
+button:hover{border-color:var(--accent)} button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--shade);outline-offset:1px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} button.primary:hover{filter:brightness(1.08)}
+button.ghost{background:transparent} button:disabled{opacity:.5;cursor:not-allowed}
+input[type=number],input[type=text],select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 9px;width:100%;min-height:40px}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+label{font-size:.82rem;font-weight:600;color:var(--ink2);display:block;margin-bottom:3px}
+.row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.row.two{grid-template-columns:1fr 1fr}
+.unit{font-weight:400;color:var(--ink2)}
+.chk{display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:500;color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-height:34px;padding:5px 10px;font-size:.82rem}
+.seg button[aria-pressed=true]{background:var(--charcoal);color:#fff}
+
+/* workspace */
+.ws{display:grid;gap:16px;grid-template-columns:minmax(300px,380px) 1fr;align-items:start}
+@media (max-width:980px){.ws{grid-template-columns:1fr}}
+.ws-in .grp{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.ws-in .grp:first-child{border:0;margin:0;padding:0}
+.grp-t{font-family:var(--serif);font-weight:700;font-size:.9rem;margin-bottom:6px}
+.lytes{display:grid;grid-template-columns:1fr 92px 64px;gap:6px 8px;align-items:center}
+.lytes .nm{font-size:.88rem} .lytes .bag{font-family:var(--mono);font-size:.78rem;color:var(--ink2);text-align:right}
+.lytes input{padding:6px 8px;min-height:36px}
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;border-top:4px solid var(--shade)}
+.tile .k{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+.tile .v{font-family:var(--mono);font-size:1.5rem;font-weight:600;line-height:1.2}
+.tile .s{font-size:.75rem;color:var(--ink2)}
+.tile.ok{border-top-color:var(--ok)} .tile.low{border-top-color:var(--info)} .tile.high{border-top-color:var(--warn)} .tile.crit{border-top-color:var(--crit)}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:999px;margin-left:4px}
+.b-ok{background:var(--ok-bg);color:var(--ok)} .b-low{background:var(--info-bg);color:var(--info)} .b-high{background:var(--warn-bg);color:var(--warn)} .b-crit{background:var(--crit-bg);color:var(--crit)}
+.bar{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--panel2);border:1px solid var(--line);margin:8px 0 4px}
+.bar span{display:block;height:100%} .bar .dex{background:var(--dex)} .bar .aa{background:var(--aa)} .bar .il{background:var(--il)} .bar .ent{background:var(--ent)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
+.scroll{overflow-x:auto}
+.flag{border-left:5px solid var(--shade);background:var(--panel2);border-radius:6px;padding:8px 12px;margin:8px 0}
+.flag.crit{border-color:var(--crit);background:var(--crit-bg)} .flag.warn{border-color:var(--warn);background:var(--warn-bg)} .flag.info{border-color:var(--info);background:var(--info-bg)}
+.flag b{display:block} .flag .why{font-size:.85rem;color:var(--ink2);margin-top:2px}
+.sug{display:grid;grid-template-columns:130px 1fr;gap:4px 12px;border-bottom:1px solid var(--line);padding:8px 0;font-size:.9rem}
+.sug .a{font-weight:700} .sug .r{grid-column:2;color:var(--ink2);font-size:.82rem}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;background:var(--panel)}
+details>summary{cursor:pointer;font-weight:700}
+.math .step{border-bottom:1px solid var(--line);padding:8px 0}
+.math .t{font-weight:700} .math .f{font-family:var(--mono);font-size:.82rem;color:var(--ink2)} .math .n{font-family:var(--mono);font-size:.92rem}
+.math .why{font-size:.82rem;color:var(--ink2)}
+
+/* labs */
+.labs{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.lab{border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:6px 8px}
+.lab .k{font-size:.7rem;color:var(--ink2);font-weight:700} .lab .v{font-family:var(--mono);font-size:1.05rem}
+.lab .r{font-size:.66rem;color:var(--ink2)}
+.lab.low{border-color:var(--info);background:var(--info-bg)} .lab.high{border-color:var(--warn);background:var(--warn-bg)}
+.lab .d{font-size:.7rem}
+
+/* day tabs, steppers */
+.days{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.days button{min-height:36px;padding:5px 12px}
+.days button[aria-current=true]{background:var(--charcoal);color:#fff;border-color:var(--charcoal)}
+.days button.done::after{content:' ✓';color:var(--ok)}
+.days button[aria-current=true].done::after{color:#fff}
+.story{border-left:5px solid var(--accent);padding:6px 12px;background:var(--panel2);border-radius:6px;margin:10px 0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.callout{background:var(--info-bg);border:1px solid var(--info);color:var(--ink);border-radius:8px;padding:10px 14px;margin:10px 0}
+.callout.good{background:var(--ok-bg);border-color:var(--ok)} .callout.bad{background:var(--crit-bg);border-color:var(--crit)}
+.res{list-style:none;margin:8px 0;padding:0} .res li{padding:3px 0}
+.res li::before{content:'○ ';color:var(--ink2)} .res li.ok::before{content:'✓ ';color:var(--ok);font-weight:700} .res li.no::before{content:'✗ ';color:var(--crit);font-weight:700}
+
+/* learn layout */
+.learn{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+@media (max-width:860px){.learn{grid-template-columns:1fr}}
+.side{position:sticky;top:8px} @media (max-width:860px){.side{position:static}}
+.side ol,.side ul{list-style:none;margin:0;padding:0}
+.side button{display:flex;width:100%;text-align:left;justify-content:space-between;gap:8px;margin-bottom:6px}
+.side button[aria-current=true]{background:var(--charcoal);color:#fff;border-color:var(--charcoal)}
+.prog{height:8px;background:var(--panel2);border-radius:999px;overflow:hidden;margin:6px 0 12px} .prog i{display:block;height:100%;background:var(--accent)}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;cursor:pointer;background:var(--panel)}
+.opt:hover{border-color:var(--accent)} .opt input{margin-top:3px}
+.opt.right{background:var(--ok-bg);border-color:var(--ok)} .opt.wrong{background:var(--crit-bg);border-color:var(--crit)}
+.hero{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+a.tilecard{display:block;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:10px;padding:18px;color:inherit;text-decoration:none}
+a.tilecard:hover,a.tilecard:focus-visible{border-color:var(--accent);outline:none}
+a.tilecard h2{color:var(--accent);margin:0 0 4px;font-size:1.2rem}
+.score{font-family:var(--mono);font-size:2rem;font-weight:700}
+.pass{color:var(--ok)} .fail{color:var(--crit)}
+.sticky-sum{position:sticky;top:0;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px;display:none;gap:14px;font-size:.82rem;font-family:var(--mono);flex-wrap:wrap}
+@media (max-width:980px){.sticky-sum{display:flex}}
+@media print{.top,.actions,.side,button{display:none!important} body{background:#fff}}
+.ws>*,.row>*,.tiles>*{min-width:0}
+@media (max-width:980px){.ws{grid-template-columns:minmax(0,1fr)}}
+.row.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+
+</style></head><body><main id="app"></main>
+<script>
+/* CICU TPN Lab — calculation + rules engine.
+   Formulas follow the TCPCHD "TPN & TF Cheat Sheet" (6/30/23). Where this engine goes beyond the sheet
+   it is marked  [BEYOND SHEET]. Everything here is educational; pharmacy compounding values govern. */
+(function (root) {
+  'use strict';
+
+  const KCAL = { dex: 3.4, aa: 4, il: 10 };      // kcal per g  (sheet)
+  const IL_ML_PER_G = 5;                         // 20% lipid emulsion: 0.2 g/mL  [BEYOND SHEET]
+  const NA_PER_MMOL_PHOS = 4 / 3;                // sodium phosphate: 4 mEq Na per 3 mmol phos [BEYOND SHEET]
+  const K_PER_MMOL_PHOS = 1.5;                   // potassium phosphate: 1 mmol = 1.5 mEq K (sheet)
+
+  const AGES = {
+    infant:     { label: 'Infant (<1 yr)',      gir: [12, 14], kcal: [85, 105], aa: [2, 3],     verifyKcal: false },
+    child:      { label: 'Child (1–10 yr)',     gir: [8, 10],  kcal: [60, 90],  aa: [1, 2],     verifyKcal: true  },
+    adolescent: { label: 'Adolescent (>35 kg)', gir: [5, 6],   kcal: [30, 50],  aa: [0.8, 1.5], verifyKcal: false }
+  };
+  // gir + infant/adolescent kcal: cheat sheet. child kcal and all aa goals: commonly cited (ASPEN-style) — VERIFY locally.
+
+  const LYTE_DEFS = [
+    { id: 'naCl',   name: 'Sodium chloride',     unit: 'mEq',  grp: 'Sodium' },
+    { id: 'naAc',   name: 'Sodium acetate',      unit: 'mEq',  grp: 'Sodium' },
+    { id: 'kCl',    name: 'Potassium chloride',  unit: 'mEq',  grp: 'Potassium' },
+    { id: 'kAc',    name: 'Potassium acetate',   unit: 'mEq',  grp: 'Potassium' },
+    { id: 'naPhos', name: 'Sodium phosphate',    unit: 'mmol', grp: 'Phosphate' },
+    { id: 'kPhos',  name: 'Potassium phosphate', unit: 'mmol', grp: 'Phosphate' },
+    { id: 'mg',     name: 'Magnesium sulfate',   unit: 'mEq',  grp: 'Magnesium' },
+    { id: 'ca',     name: 'Calcium gluconate',   unit: 'mEq',  grp: 'Calcium' }
+  ];
+
+  // Total-electrolyte ranges from the cheat sheet: [min, max, basis]  basis 'kg' = per kg/day, 'day' = per day
+  const RANGES = {
+    na:   { infant: [2, 5, 'kg'],     child: [2, 5, 'kg'],     adolescent: [1, 2, 'kg'] },
+    k:    { infant: [2, 4, 'kg'],     child: [2, 4, 'kg'],     adolescent: [1, 2, 'kg'] },
+    phos: { infant: [0.5, 2, 'kg'],   child: [0.5, 2, 'kg'],   adolescent: [10, 40, 'day'] },
+    mg:   { infant: [0.3, 0.5, 'kg'], child: [0.3, 0.5, 'kg'], adolescent: [10, 30, 'day'] },
+    ca:   { infant: [0.5, 4, 'kg'],   child: [0.5, 4, 'kg'],   adolescent: [10, 20, 'day'] }
+  };
+
+  // Minor / major adjustment steps from the cheat sheet ("HOW TO ADJUST ELECTROLYTES")
+  const ADJUST = {
+    na:      { minor: '½NS → ¾NS → NS, or +1–2 mEq/kg/day', major: '½NS → NS, or +3–4 mEq/kg/day', bolus: 'NS 20 mL/kg' },
+    k:       { minor: '+1 mEq/kg/day (or +10 mEq/L)',       major: '+1.5–2 mEq/kg/day (20 mEq/L)', bolus: '1 mEq/kg/dose' },
+    acetate: { minor: '+1 mEq/kg/day',                      major: '+2 mEq/kg/day',                bolus: '1 mEq/kg/dose' },
+    phos:    { minor: '+0.25 mmol/kg/day',                  major: '+0.5 mmol/kg/day',             bolus: '0.25–0.5 mmol/kg/dose' },
+    mg:      { minor: '+0.3 mEq/kg/day',                    major: '+0.5 mEq/kg/day',              bolus: '25–50 mg/kg/dose' },
+    ca:      { minor: '+1 mEq/kg/day',                      major: '+2 mEq/kg/day',                bolus: '50 mg/kg/dose (sheet prints "/day" — likely a typo; VERIFY)' }
+  };
+
+  // Approximate lab reference ranges for flagging only. VERIFY against your laboratory.
+  const LAB_REF = {
+    na:   { label: 'Na',   unit: 'mmol/L', lo: 135, hi: 145 },
+    k:    { label: 'K',    unit: 'mmol/L', lo: 3.5, hi: 5.0, hiInfant: 5.5 },
+    cl:   { label: 'Cl',   unit: 'mmol/L', lo: 98,  hi: 108 },
+    co2:  { label: 'CO₂',  unit: 'mmol/L', lo: 20,  hi: 28 },
+    bun:  { label: 'BUN',  unit: 'mg/dL',  lo: 5,   hi: 18 },
+    cr:   { label: 'Creatinine', unit: 'mg/dL', lo: 0.2, hi: 0.6, hiChild: 0.7, hiAdolescent: 1.0 },
+    glu:  { label: 'Glucose', unit: 'mg/dL', lo: 70, hi: 180 },
+    ca:   { label: 'Total Ca', unit: 'mg/dL', lo: 8.5, hi: 10.5 },
+    ica:  { label: 'Ionized Ca', unit: 'mmol/L', lo: 1.10, hi: 1.40 },
+    phos: { label: 'Phos', unit: 'mg/dL',  lo: 4.5, hi: 6.7, loChild: 4.0, hiChild: 6.0, loAdolescent: 3.0, hiAdolescent: 5.0 },
+    mg:   { label: 'Mg',   unit: 'mg/dL',  lo: 1.6, hi: 2.4 },
+    alb:  { label: 'Albumin', unit: 'g/dL', lo: 3.0, hi: 5.0 },
+    tg:   { label: 'Triglycerides', unit: 'mg/dL', lo: 0, hi: 200 },
+    dbili:{ label: 'Direct bili', unit: 'mg/dL', lo: 0, hi: 1.0 },
+    alt:  { label: 'ALT',  unit: 'U/L',    lo: 0, hi: 45 },
+    uop:  { label: 'Urine output', unit: 'mL/kg/hr', lo: 1, hi: 99 }
+  };
+
+  const num = (x) => { const v = parseFloat(x); return isFinite(v) ? v : 0; };
+  const r = (x, d = 1) => { const m = Math.pow(10, d); return Math.round(x * m) / m; };
+
+  function emptyOrder() {
+    return {
+      rate: 0, dex: 0, aa: 0, il: 0, ivf: 0, cysteine: false, carnitine: 0,
+      access: 'central', calciumInfusion: false,
+      lytes: { naCl: 0, naAc: 0, kCl: 0, kAc: 0, naPhos: 0, kPhos: 0, mg: 0, ca: 0 },
+      feeds: { n: 0, vol: 0, kcalOz: 0 }
+    };
+  }
+  function cloneOrder(o) { return JSON.parse(JSON.stringify(o)); }
+
+  /** Core calculations — each line mirrors a cell formula from the cheat sheet. */
+  function calc(pt, o) {
+    const wt = num(pt.wt), age = pt.age || 'infant';
+    const rate = num(o.rate), dex = num(o.dex), aa = num(o.aa), il = num(o.il), ivf = num(o.ivf);
+    const f = o.feeds || {}, fn = num(f.n), fvol = num(f.vol), fk = num(f.kcalOz);
+    const L = o.lytes || {};
+    const ly = {}; LYTE_DEFS.forEach(d => { ly[d.id] = num(L[d.id]); });
+
+    const tpnL = (rate * 24) / 1000;                                   // B4
+    const gir = wt > 0 ? (dex * rate) / wt / 6 : 0;                    // E2
+    const dexG = (dex / 100) * rate * 24;
+    const dexKcal = dex * 0.01 * (rate * 24) * KCAL.dex;               // E4
+    const aaG = aa * wt, aaKcal = aaG * KCAL.aa;                       // E5
+    const ilG = il * wt, ilKcal = ilG * KCAL.il;                       // E6
+    const tpnKcal = dexKcal + aaKcal + ilKcal;                         // E7
+    const tpnKcalKg = wt > 0 ? tpnKcal / wt : 0;                       // E8
+
+    const feedMl = fn * fvol;
+    const feedKcalKg = wt > 0 ? (fn * fvol / 30 * fk) / wt : 0;        // E10 (kcal per 30 mL = kcal/oz)
+    const feedMlKg = wt > 0 ? feedMl / wt : 0;                         // E12
+    const tpnIvfMlKg = wt > 0 ? ((rate + ivf) * 24) / wt : 0;          // E14 (sheet adds IVF rate to TPN rate)
+    const sheetTotalFluids = tpnIvfMlKg + feedMlKg;                    // E15
+    const lipidMl = ilG * IL_ML_PER_G;                                 // [BEYOND SHEET]
+    const lipidMlKg = wt > 0 ? lipidMl / wt : 0;
+    const totalFluids = sheetTotalFluids + lipidMlKg;                  // incl. lipid volume
+    const totalKcalKg = tpnKcalKg + feedKcalKg;                        // E11
+
+    // Electrolytes
+    const tot = {
+      na: ly.naCl + ly.naAc + ly.naPhos * NA_PER_MMOL_PHOS,            // sheet omits Na from Na-phos [BEYOND SHEET]
+      k: ly.kCl + ly.kAc + ly.kPhos * K_PER_MMOL_PHOS,                 // sheet: KCl + KAc + 1.5 × KPhos
+      cl: ly.naCl + ly.kCl,
+      acetate: ly.naAc + ly.kAc,
+      phos: ly.naPhos + ly.kPhos,
+      mg: ly.mg, ca: ly.ca
+    };
+    const perLiter = {};
+    Object.keys(ly).concat(Object.keys(tot)).forEach(k => {
+      const kg = (k in ly) ? ly[k] : tot[k];
+      perLiter[k] = tpnL > 0 ? (kg * wt) / tpnL : 0;                    // H = I × wt / TPN L/day
+    });
+    const perDay = {}; Object.keys(tot).forEach(k => { perDay[k] = tot[k] * wt; });
+
+    const caMmolKg = tot.ca / 2;                                       // Ca gluconate: 1 mmol = 2 mEq
+    const caPRatio = tot.phos > 0 ? caMmolKg / tot.phos : null;        // molar Ca:Phos
+    const phosPer100 = tpnL > 0 ? (tot.phos * wt) / (tpnL * 10) : 0;  // mmol phos per 100 mL TPN
+
+    const aaPct = rate > 0 ? aaG / (rate * 24 / 100) : 0;              // g AA per 100 mL
+    const osm = dex * 50.5 + aaPct * 100 + 2 * (perLiter.na + perLiter.k + perLiter.ca + perLiter.mg); // rough estimate [BEYOND SHEET]
+    const nitrogen = aaG / 6.25;
+    const npcN = nitrogen > 0 ? (dexKcal + ilKcal) / nitrogen : 0;
+
+    const kcalSplit = tpnKcal > 0 ? { dex: dexKcal / tpnKcal, aa: aaKcal / tpnKcal, il: ilKcal / tpnKcal } : { dex: 0, aa: 0, il: 0 };
+
+    return {
+      wt, age, rate, dex, aa, il, ivf, tpnL, gir, dexG, dexKcal, aaG, aaKcal, ilG, ilKcal, tpnKcal, tpnKcalKg,
+      feedMl, feedKcalKg, feedMlKg, tpnIvfMlKg, sheetTotalFluids, lipidMl, lipidMlKg, totalFluids, totalKcalKg,
+      tpnMlKg: wt > 0 ? rate * 24 / wt : 0, ivfMlKg: wt > 0 ? ivf * 24 / wt : 0,
+      lytes: ly, tot, perLiter, perDay, caMmolKg, caPRatio, phosPer100, aaPct, osm, nitrogen, npcN, kcalSplit,
+      feedPctKcal: totalKcalKg > 0 ? feedKcalKg / totalKcalKg : 0
+    };
+  }
+
+  function rangeFor(key, age) { const t = RANGES[key]; return t ? t[age] : null; }
+  function rangeStatus(key, age, c) {
+    const rg = rangeFor(key, age); if (!rg) return null;
+    const v = rg[2] === 'day' ? c.perDay[key] : c.tot[key];
+    if (v <= 0) return 'none';
+    return v < rg[0] ? 'low' : v > rg[1] ? 'high' : 'ok';
+  }
+  function girStatus(c) { const g = AGES[c.age].gir; return c.gir <= 0 ? 'none' : c.gir < g[0] ? 'low' : c.gir > g[1] ? 'high' : 'ok'; }
+  function kcalStatus(c) { const g = AGES[c.age].kcal; return c.totalKcalKg <= 0 ? 'none' : c.totalKcalKg < g[0] ? 'low' : c.totalKcalKg > g[1] ? 'high' : 'ok'; }
+
+  /** Albumin-corrected total calcium (mg/dL). Ionized Ca is preferred in critically ill children. */
+  function correctedCa(ca, alb) { return ca + 0.8 * (4 - alb); }
+
+  function labFlag(key, val, age) {
+    const ref = LAB_REF[key]; if (!ref || val == null) return 'na';
+    let lo = ref.lo, hi = ref.hi;
+    if (key === 'k' && age === 'infant') hi = ref.hiInfant;
+    if (key === 'cr') { if (age === 'child') hi = ref.hiChild; if (age === 'adolescent') hi = ref.hiAdolescent; if (age !== 'infant') lo = 0.3; }
+    if (key === 'phos') { if (age === 'child') { lo = ref.loChild; hi = ref.hiChild; } if (age === 'adolescent') { lo = ref.loAdolescent; hi = ref.hiAdolescent; } }
+    return val < lo ? 'low' : val > hi ? 'high' : 'ok';
+  }
+
+  /** Safety / consideration rules. ctx = latest labs (+ optional prior order for "advancing" checks). */
+  function evaluate(pt, o, ctx, extra) {
+    ctx = ctx || {}; extra = extra || {};
+    const c = calc(pt, o), age = c.age, flags = [];
+    const add = (sev, id, text, why) => flags.push({ sev, id, text, why });
+    const prev = extra.prevOrder ? calc(pt, extra.prevOrder) : null;
+
+    if (c.wt <= 0) { add('info', 'wt', 'Enter a dosing weight to begin.', 'Every TPN calculation is per kg.'); return { calc: c, flags }; }
+
+    // Glucose / dextrose
+    const gs = girStatus(c);
+    if (gs === 'high') add('warn', 'gir-high', `GIR ${r(c.gir)} is above the ${AGES[age].gir.join('–')} mg/kg/min goal.`, 'Above oxidation capacity, excess glucose becomes fat and CO₂ — hyperglycemia, hepatic steatosis, higher CO₂ load (caution in respiratory failure).');
+    if (gs === 'low' && c.dex > 0) add('info', 'gir-low', `GIR ${r(c.gir)} is below the ${AGES[age].gir.join('–')} mg/kg/min goal.`, 'Fine early in advancement — confirm you are advancing toward goal as glucose allows.');
+    if (c.gir > 0 && c.gir < 2.5) add('warn', 'gir-vlow', 'GIR is very low — hypoglycemia risk if no other dextrose source.', 'Infants have limited glycogen stores and depend on a steady glucose supply.');
+    if (ctx.glu != null && ctx.glu > 180 && prev && c.gir > prev.gir + 0.01) add('crit', 'adv-hyperglycemia', `Glucose ${ctx.glu} mg/dL and GIR was advanced.`, 'Hold dextrose advancement while hyperglycemic; consider lowering GIR and/or insulin per protocol.');
+    else if (ctx.glu != null && ctx.glu > 180) add('warn', 'hyperglycemia', `Glucose ${ctx.glu} mg/dL (>180).`, 'Do not advance dextrose; reassess GIR, steroids, sepsis, stress response; consider insulin.');
+    if (ctx.glu != null && ctx.glu < 60) add('crit', 'hypoglycemia', `Glucose ${ctx.glu} mg/dL (<60).`, 'Treat per hypoglycemia protocol and reassess dextrose delivery.');
+
+    // Amino acids
+    if (age === 'infant' && c.aa > 0 && !o.cysteine) add('warn', 'cysteine', 'Infant <1 yr on amino acids without L-cysteine.', 'Cheat sheet: if <1 year, must add L-cysteine (conditionally essential in infants; also acidifies solution, helping Ca/Phos solubility).');
+    if (ctx.bun != null && ctx.bun >= 30 && c.aa > 0) add('warn', 'bun-aa', `BUN ${ctx.bun} (≥30) while on ${r(c.aa, 2)} g/kg/day amino acids.`, 'Cheat sheet: decrease protein by 0.5–1 g/kg/day when BUN ≥30; monitor closely in renal/hepatic dysfunction.');
+    if (ctx.bun != null && ctx.bun >= 30 && prev && c.aa > prev.aaG / prev.wt + 0.01) add('crit', 'adv-aa-bun', 'Amino acids advanced while BUN ≥30.', 'Advancing protein in azotemia worsens BUN — reduce rather than advance.');
+    const aaG = AGES[age].aa; if (c.aa > aaG[1] + 0.5) add('warn', 'aa-high', `AA ${r(c.aa, 2)} g/kg/day exceeds the usual ${aaG.join('–')} g/kg/day range for this age.`, 'Commonly cited ranges — verify against your protocol.');
+
+    // Lipid
+    if (ctx.tg != null) {
+      if (ctx.tg > 300 && c.il > 0) add('crit', 'tg-hold-il', `TG ${ctx.tg} mg/dL (>300) with lipid running at ${r(c.il, 2)} g/kg/day.`, 'Cheat sheet: hold lipid if TG >300. Reassess dextrose load, sepsis, steroids, propofol/other lipid sources, and consider carnitine.');
+      else if (ctx.tg >= 200 && prev && c.il > prev.ilG / prev.wt + 0.01) add('crit', 'adv-il-tg', `TG ${ctx.tg} mg/dL (200–300) and lipid was advanced.`, 'Cheat sheet: hold advancement of lipid if TG 200–300.');
+      else if (ctx.tg >= 200) add('warn', 'tg-borderline', `TG ${ctx.tg} mg/dL (200–300).`, 'Hold lipid advancement; recheck TG after steady rate. Institutional thresholds vary.');
+    }
+    if (c.il > 3) add('crit', 'il-max', `Lipid ${r(c.il, 2)} g/kg/day is above the usual 3 g/kg/day ceiling.`, 'Higher lipid doses risk hypertriglyceridemia, hepatic and pulmonary complications. VERIFY local max.');
+    if (ctx.tg != null && ctx.tg >= 200 && age === 'infant' && num(o.carnitine) === 0) add('info', 'carnitine', 'Consider L-carnitine 10 mg/kg/day (up to 20) for infants with elevated TG.', 'Cheat sheet: L-carnitine helps lower TG — most relevant with prolonged TPN or low carnitine stores.');
+    if (num(o.carnitine) > 20) add('warn', 'carnitine-high', 'L-carnitine above 20 mg/kg/day.', 'Cheat sheet range is 10 up to 20 mg/kg/day for infants.');
+
+    // Calcium / phosphate
+    if (o.calciumInfusion && c.tot.phos > 0) add('crit', 'ca-gtt-phos', 'Phosphate in TPN while a calcium chloride infusion is running.', 'Cheat sheet: DO NOT ADD PHOS IF ON CaCl gtt — calcium-phosphate precipitation in the line is life-threatening.');
+    if (c.phosPer100 >= 2) add('crit', 'phos-100', `Phosphate ${r(c.phosPer100, 2)} mmol/100 mL (≥2).`, 'Cheat sheet: keep phos <2 mmol/100 mL — precipitates with calcium.');
+    if (c.tot.ca > 0 && c.tot.phos > 0 && c.caPRatio != null && (c.caPRatio < 0.6 || c.caPRatio > 1.6)) add('info', 'cap-ratio', `Ca:Phos molar ratio ${r(c.caPRatio, 2)}:1.`, 'Cheat sheet: try to match 1:1 for bone mineralization if lytes allow. Remember Ca gluconate is mEq (1 mmol = 2 mEq) while phos is mmol.');
+    if (ctx.alb != null && ctx.ca != null) { const cc = correctedCa(ctx.ca, ctx.alb); if (Math.abs(cc - ctx.ca) >= 0.4) add('info', 'alb-ca', `Albumin ${ctx.alb}: corrected Ca ≈ ${r(cc, 1)} mg/dL (measured ${ctx.ca}).`, 'Cheat sheet note: as albumin falls, more Ca is free — consider albumin correction; ionized Ca is preferred when available.'); }
+
+    // Potassium / renal
+    if (ctx.k != null && ctx.k > (age === 'infant' ? 5.5 : 5.0) && c.tot.k > 0) add('crit', 'hyperK', `K ${ctx.k} with ${r(c.tot.k, 2)} mEq/kg/day K in TPN.`, 'Remove or minimize K until K normalizes; check renal function, hemolysis, acidosis.');
+    if (ctx.uop != null && ctx.uop < 1 && c.tot.k > 0) add('warn', 'oliguria-K', `Urine output ${ctx.uop} mL/kg/hr with K in TPN.`, 'Be conservative with K, phos and Mg in renal dysfunction.');
+    if (ctx.cr != null && labFlag('cr', ctx.cr, age) === 'high' && (c.tot.k > 0 || c.tot.phos > 0 || c.tot.mg > 0)) add('warn', 'renal-lytes', 'Elevated creatinine with K/Phos/Mg in TPN.', 'Cheat sheet: renal dysfunction → be conservative with K, Phos, Mag.');
+
+    // Range checks (cheat sheet)
+    [['na', 'Sodium'], ['k', 'Potassium'], ['phos', 'Phosphate'], ['mg', 'Magnesium'], ['ca', 'Calcium']].forEach(([k, nm]) => {
+      const st = rangeStatus(k, age, c), rg = rangeFor(k, age);
+      if (st === 'high') add('warn', k + '-range-high', `${nm} above the usual range (${rg[0]}–${rg[1]} ${k === 'phos' ? 'mmol' : 'mEq'}/${rg[2] === 'day' ? 'day' : 'kg/day'}).`, 'Cheat sheet reference range for this age group.');
+    });
+
+    // Access / osmolarity
+    if (o.access === 'peripheral') {
+      if (c.osm > 900) add('crit', 'periph-osm', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L via peripheral line.`, 'Commonly cited limit for peripheral PN is ~900 mOsm/L (dextrose ≲12.5%). Hyperosmolar PN causes phlebitis/infiltration injury. VERIFY policy.');
+      else if (c.osm >= 800) add('warn', 'periph-osm-near', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L — near the peripheral limit.`, 'Commonly cited ~900 mOsm/L limit — VERIFY policy.');
+      if (c.dex > 12.5) add('crit', 'periph-dex', `Dextrose ${c.dex}% via peripheral line.`, 'Peripheral PN is generally limited to ≤12.5% dextrose — VERIFY policy.');
+    }
+
+    // Fluids
+    if (extra.fluidGoal && c.totalFluids > extra.fluidGoal * 1.001) add('warn', 'fluid-over', `Total fluids ${r(c.totalFluids, 0)} mL/kg/day exceed the ${extra.fluidGoal} mL/kg/day goal (includes lipid volume).`, 'Cardiac patients are often fluid-restricted — concentrate TPN, review IVF/flushes/drips, and confirm the goal with the team.');
+    if (c.lipidMlKg > 0 && extra.fluidGoal) add('info', 'lipid-volume', `Lipid adds ${r(c.lipidMl, 0)} mL/day (${r(c.lipidMlKg, 1)} mL/kg/day).`, 'Lipid volume counts toward total fluids when run separately — the cheat sheet total does not include it.');
+
+    // Calories
+    if (kcalStatus(c) === 'high') add('warn', 'kcal-high', `Total ${r(c.totalKcalKg, 0)} kcal/kg/day is above the ${AGES[age].kcal.join('–')} goal.`, 'Overfeeding raises CO₂ production and risks steatosis. Cardiac patients may have different targets.');
+    if (age === 'child') { /* child kcal target flagged in UI as "verify" */ }
+
+    // Enteral transition
+    if (c.feedKcalKg > 0 && c.feedPctKcal >= 0.5 && c.tpnKcalKg > 0) add('info', 'wean', `Enteral feeds provide ${Math.round(c.feedPctKcal * 100)}% of calories.`, 'Plan the TPN wean as feeds advance (commonly ≥50% enteral → wean; ≥75% → stop) — VERIFY protocol.');
+
+    // Cardiac-specific reminders always shown as info when TPN running
+    return { calc: c, flags };
+  }
+
+  /** Teaching-default next-day suggestion. NOT a protocol. */
+  function suggestNext(pt, o, ctx) {
+    ctx = ctx || {};
+    const c = calc(pt, o), age = c.age, wt = c.wt, out = [];
+    const sug = (area, action, reason, rule) => out.push({ area, action, reason, rule: rule || 'teaching default' });
+    if (wt <= 0 || c.tpnL <= 0) return out;
+    const goal = AGES[age].gir;
+
+    // Dextrose
+    if (ctx.glu != null && ctx.glu > 250) sug('Dextrose', `Reduce GIR by 1–2 mg/kg/min (from ${r(c.gir)} → ~${r(Math.max(c.gir - 1.5, 2.5))}).`, `Glucose ${ctx.glu} mg/dL — marked hyperglycemia. Consider insulin per protocol.`, 'teaching default');
+    else if (ctx.glu != null && ctx.glu > 180) sug('Dextrose', `Hold GIR at ${r(c.gir)} mg/kg/min.`, `Glucose ${ctx.glu} mg/dL (>180) — do not advance.`, 'teaching default');
+    else if (c.gir >= goal[1]) sug('Dextrose', `At goal — hold GIR ${r(c.gir)}.`, `Goal ${goal.join('–')} mg/kg/min for this age.`, 'cheat sheet goal');
+    else { const next = Math.min(c.gir + 1.5, goal[1]); sug('Dextrose', `Advance GIR by ~1–2 mg/kg/min (${r(c.gir)} → ~${r(next)}; dextrose ≈ ${r((next * 6 * wt) / num(o.rate), 1)}% at ${o.rate} mL/hr).`, `Below goal ${goal.join('–')} and glucose acceptable.`, 'teaching default (step size); goal from cheat sheet'); }
+
+    // Amino acids
+    if (ctx.bun != null && ctx.bun >= 30) sug('Amino acids', `Decrease protein by 0.5–1 g/kg/day (${r(c.aa, 2)} → ${r(Math.max(c.aa - 0.75, 0.5), 2)}).`, `BUN ${ctx.bun} ≥ 30.`, 'cheat sheet');
+    else if (c.aa < AGES[age].aa[1]) sug('Amino acids', `Advance by ~0.5 g/kg/day (${r(c.aa, 2)} → ${r(Math.min(c.aa + 0.5, AGES[age].aa[1]), 2)}).`, `Goal commonly ${AGES[age].aa.join('–')} g/kg/day for this age.`, 'teaching default / commonly cited');
+    else sug('Amino acids', `At goal — hold ${r(c.aa, 2)} g/kg/day.`, `Commonly ${AGES[age].aa.join('–')} g/kg/day.`, 'commonly cited');
+    if (age === 'infant' && !o.cysteine && c.aa > 0) sug('Amino acids', 'Add L-cysteine.', 'Infant <1 year.', 'cheat sheet');
+
+    // Lipid
+    if (ctx.tg != null && ctx.tg > 300) sug('Lipid', `Hold lipid (TG ${ctx.tg} >300); recheck TG in 24 h.`, 'Per cheat sheet. Many centers reduce to ~0.5–1 g/kg/day instead to prevent EFAD — follow local protocol.', 'cheat sheet');
+    else if (ctx.tg != null && ctx.tg >= 200) sug('Lipid', `Hold advancement at ${r(c.il, 2)} g/kg/day (TG ${ctx.tg}).`, 'TG 200–300.', 'cheat sheet');
+    else if (c.il < 3) sug('Lipid', `Advance by 0.5–1 g/kg/day (${r(c.il, 2)} → ${r(Math.min(c.il + 0.5, 3), 2)}) to a usual ceiling of 3.`, 'TG acceptable.', 'teaching default');
+    if (ctx.tg != null && ctx.tg >= 200 && age === 'infant' && num(o.carnitine) === 0) sug('Carnitine', 'Consider L-carnitine 10 mg/kg/day (max 20).', 'Elevated TG in an infant.', 'cheat sheet');
+
+    // Electrolytes (cheat sheet adjustment table)
+    const cur = c.tot;
+    if (ctx.k != null) {
+      if (ctx.k < 3.0) sug('Potassium', `Major increase: +1.5–2 mEq/kg/day (now ${r(cur.k, 2)}).`, `K ${ctx.k} (<3.0). Consider 1 mEq/kg bolus if symptomatic.`, 'cheat sheet');
+      else if (ctx.k < 3.5) sug('Potassium', `Minor increase: +1 mEq/kg/day (now ${r(cur.k, 2)}).`, `K ${ctx.k} (<3.5).`, 'cheat sheet');
+      else if (ctx.k > (age === 'infant' ? 5.5 : 5.0)) sug('Potassium', 'Remove/reduce K.', `K ${ctx.k} — high.`, 'teaching default');
+    }
+    if (ctx.na != null) {
+      if (ctx.na < 130) sug('Sodium', 'Major increase (½NS → NS, or +3–4 mEq/kg/day).', `Na ${ctx.na}.`, 'cheat sheet');
+      else if (ctx.na < 135) sug('Sodium', 'Minor increase (½NS → ¾NS, or +1–2 mEq/kg/day).', `Na ${ctx.na}.`, 'cheat sheet');
+      else if (ctx.na > 145) sug('Sodium', 'Reduce sodium; check free water, diuretics, insensible losses.', `Na ${ctx.na}.`, 'teaching default');
+    }
+    if (ctx.phos != null) {
+      const f = labFlag('phos', ctx.phos, age);
+      if (f === 'low') sug('Phosphate', ctx.phos < 2.5 ? 'Major increase: +0.5 mmol/kg/day.' : 'Minor increase: +0.25 mmol/kg/day.', `Phos ${ctx.phos} mg/dL — low for age. Mind Ca:Phos, <2 mmol/100 mL, no phos if on CaCl gtt.`, 'cheat sheet');
+      else if (f === 'high') sug('Phosphate', 'Reduce/hold phosphate.', `Phos ${ctx.phos} mg/dL — high; check renal function.`, 'teaching default');
+    }
+    if (ctx.mg != null) {
+      if (ctx.mg < 1.2) sug('Magnesium', 'Major increase: +0.5 mEq/kg/day.', `Mg ${ctx.mg}.`, 'cheat sheet');
+      else if (ctx.mg < 1.6) sug('Magnesium', 'Minor increase: +0.3 mEq/kg/day.', `Mg ${ctx.mg}.`, 'cheat sheet');
+      else if (ctx.mg > 2.6) sug('Magnesium', 'Reduce/hold Mg.', `Mg ${ctx.mg}; check renal function.`, 'teaching default');
+    }
+    const lowCa = ctx.ica != null ? ctx.ica < 1.10 : null;
+    if (lowCa === true) sug('Calcium', ctx.ica < 1.0 ? 'Major increase: +2 mEq/kg/day.' : 'Minor increase: +1 mEq/kg/day.', `iCa ${ctx.ica} mmol/L. Consider albumin.`, 'cheat sheet');
+    if (ctx.co2 != null && ctx.cl != null) {
+      if (ctx.co2 < 20 && ctx.cl > 108) sug('Chloride/Acetate', `Shift chloride → acetate (+1–2 mEq/kg/day acetate; now ${r(cur.acetate, 2)}).`, `Hyperchloremic non-gap acidosis: Cl ${ctx.cl}, CO₂ ${ctx.co2}. Acetate is converted to bicarbonate.`, 'cheat sheet (acetate steps)');
+      else if (ctx.co2 > 30 && cur.acetate > 0) sug('Chloride/Acetate', 'Shift acetate → chloride.', `Alkalosis: CO₂ ${ctx.co2} (common with loop diuretics).`, 'teaching default');
+    }
+
+    // Feeds / wean
+    if (c.feedKcalKg > 0) {
+      const goalKcal = AGES[age].kcal[0];
+      sug('TPN wean', `Enteral = ${r(c.feedKcalKg, 0)} kcal/kg/day (${Math.round(c.feedPctKcal * 100)}% of total). Aim TPN ≈ ${r(Math.max(goalKcal - c.feedKcalKg, 0), 0)} kcal/kg/day.`, c.feedPctKcal >= 0.75 ? 'Feeds ≥75% — consider stopping TPN.' : c.feedPctKcal >= 0.5 ? 'Feeds ≥50% — wean TPN.' : 'Continue TPN while advancing feeds.', 'commonly cited — VERIFY');
+    }
+    return out;
+  }
+
+  /** Build the "show the math" walkthrough with the learner's own numbers. */
+  function steps(pt, o) {
+    const c = calc(pt, o), wt = c.wt, rate = num(o.rate), dex = num(o.dex);
+    const f2 = (x, d = 2) => r(x, d);
+    const S = [];
+    S.push({ t: 'TPN volume per day', f: 'L/day = mL/hr × 24 ÷ 1000', n: `${rate} × 24 ÷ 1000 = ${f2(c.tpnL, 3)} L/day`, n2: `= ${f2(c.tpnMlKg, 1)} mL/kg/day` });
+    S.push({ t: 'Glucose infusion rate (GIR)', f: 'GIR (mg/kg/min) = dextrose % × mL/hr ÷ weight ÷ 6', n: `${dex} × ${rate} ÷ ${wt} ÷ 6 = ${f2(c.gir)} mg/kg/min`, why: 'The ÷6 comes from converting % (g/100 mL) and mL/hr to mg/min: 1% = 10 mg/mL, ÷60 min → ×10/60 = ÷6.' });
+    S.push({ t: 'Dextrose calories', f: 'kcal/day = dextrose % × 0.01 × (mL/hr × 24) × 3.4', n: `${dex} × 0.01 × ${rate * 24} × 3.4 = ${f2(c.dexKcal, 0)} kcal/day` });
+    S.push({ t: 'Amino acid calories', f: 'kcal/day = AA (g/kg/day) × weight × 4', n: `${f2(num(o.aa))} × ${wt} × 4 = ${f2(c.aaKcal, 0)} kcal/day`, why: `${f2(c.aaG, 1)} g protein per day.` });
+    S.push({ t: 'Lipid calories', f: 'kcal/day = lipid (g/kg/day) × weight × 10', n: `${f2(num(o.il))} × ${wt} × 10 = ${f2(c.ilKcal, 0)} kcal/day`, why: `20% lipid = 2 kcal/mL = 10 kcal/g fat; ${f2(c.ilG, 1)} g/day = ${f2(c.lipidMl, 0)} mL/day of 20% emulsion.` });
+    S.push({ t: 'TPN calories per kg', f: '(dextrose + AA + lipid kcal) ÷ weight', n: `(${f2(c.dexKcal, 0)} + ${f2(c.aaKcal, 0)} + ${f2(c.ilKcal, 0)}) ÷ ${wt} = ${f2(c.tpnKcalKg, 1)} kcal/kg/day` });
+    const fd = o.feeds || {};
+    if (num(fd.n) > 0) S.push({ t: 'Enteral calories per kg', f: 'feeds/day × volume ÷ 30 × (kcal per 30 mL) ÷ weight', n: `${fd.n} × ${fd.vol} ÷ 30 × ${fd.kcalOz} ÷ ${wt} = ${f2(c.feedKcalKg, 1)} kcal/kg/day`, n2: `= ${f2(c.feedMlKg, 1)} mL/kg/day` });
+    S.push({ t: 'Total calories', f: 'TPN kcal/kg + enteral kcal/kg', n: `${f2(c.tpnKcalKg, 1)} + ${f2(c.feedKcalKg, 1)} = ${f2(c.totalKcalKg, 1)} kcal/kg/day` });
+    S.push({ t: 'Total fluids', f: '(TPN + IVF mL/hr) × 24 ÷ weight + feeds mL/kg + lipid mL/kg', n: `(${rate} + ${num(o.ivf)}) × 24 ÷ ${wt} + ${f2(c.feedMlKg, 1)} + ${f2(c.lipidMlKg, 1)} = ${f2(c.totalFluids, 1)} mL/kg/day`, why: 'The cheat-sheet total excludes the lipid volume; it is added here because lipid is a real volume.' });
+    S.push({ t: 'Electrolytes: bag ↔ patient', f: 'mEq/kg/day = mEq/L × TPN L/day ÷ weight        mEq/L = mEq/kg/day × weight ÷ TPN L/day', n: `Example (total Na ${f2(c.tot.na, 2)} mEq/kg/day): ${f2(c.tot.na, 2)} × ${wt} ÷ ${f2(c.tpnL, 3)} = ${f2(c.perLiter.na, 0)} mEq/L`, why: 'Concentration (mEq/L) depends on TPN volume; the daily dose (mEq/kg/day) does not. Change the rate and the mEq/L changes if the dose is held.' });
+    S.push({ t: 'Potassium from K-phos', f: 'K (mEq) = KCl + K-acetate + 1.5 × K-phos (mmol)', n: `${f2(c.lytes.kCl)} + ${f2(c.lytes.kAc)} + 1.5 × ${f2(c.lytes.kPhos)} = ${f2(c.tot.k, 2)} mEq/kg/day`, why: '1 mmol K-phos carries 1.5 mEq K — count it toward total potassium.' });
+    S.push({ t: 'Calcium : phosphate', f: 'Ca (mmol) = Ca gluconate (mEq) ÷ 2;  ratio = Ca mmol ÷ phos mmol', n: c.tot.phos > 0 ? `${f2(c.caMmolKg, 2)} ÷ ${f2(c.tot.phos, 2)} = ${f2(c.caPRatio, 2)} : 1` : 'No phosphate ordered.', why: 'Cheat sheet: try to match 1:1 if lytes allow — convert units first (phos is mmol, calcium gluconate is mEq).' });
+    return S;
+  }
+
+  const api = { KCAL, AGES, LYTE_DEFS, RANGES, ADJUST, LAB_REF, IL_ML_PER_G, emptyOrder, cloneOrder, calc, rangeFor, rangeStatus, girStatus, kcalStatus, correctedCa, labFlag, evaluate, suggestNext, steps, r, num };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TPN = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Teaching cases (Teach + Learn). All patients are fictional.
+   Labs per day are scripted by the case author; `react()` then nudges them if the learner's PRIOR day order
+   exceeded the patient's (hidden) tolerance, so unsafe choices have visible, teachable consequences.
+   Source tags used in teaching text:  [sheet] = TCPCHD cheat sheet · [common] = commonly cited, verify locally · [default] = teaching default. */
+(function (root) {
+  'use strict';
+  const T = root.TPN;
+
+  const LAB_ORDER = ['na', 'k', 'cl', 'co2', 'bun', 'cr', 'glu', 'ca', 'ica', 'phos', 'mg', 'alb', 'tg', 'dbili', 'alt', 'uop'];
+
+  function react(cs, idx, prevOrder, baseLabs) {
+    const labs = Object.assign({}, baseLabs), notes = [];
+    if (!prevOrder || idx === 0) return { labs, notes };
+    const c = T.calc(cs.patient, prevOrder), tol = cs.tol || {};
+    if (tol.gir != null && c.gir > tol.gir) {
+      const add = Math.round((c.gir - tol.gir) * 18); labs.glu = baseLabs.glu + add;
+      notes.push(`Glucose ${labs.glu} (vs ${baseLabs.glu} expected): yesterday's GIR ${T.r(c.gir)} mg/kg/min exceeded what this patient tolerates right now (~${tol.gir}).`);
+    }
+    if (tol.il != null && c.il > tol.il) {
+      const add = Math.round((c.il - tol.il) * 95); labs.tg = baseLabs.tg + add;
+      notes.push(`TG ${labs.tg} (vs ${baseLabs.tg} expected): lipid ${T.r(c.il, 2)} g/kg/day was above this patient's clearance (~${tol.il} g/kg/day).`);
+    }
+    if (tol.aa != null && c.aa > tol.aa) {
+      const add = Math.round((c.aa - tol.aa) * 14); labs.bun = baseLabs.bun + add;
+      notes.push(`BUN ${labs.bun} (vs ${baseLabs.bun} expected): protein ${T.r(c.aa, 2)} g/kg/day exceeded renal tolerance (~${tol.aa} g/kg/day).`);
+    }
+    if (tol.k != null && c.tot.k > tol.k) {
+      const add = Math.round((c.tot.k - tol.k) * 0.55 * 10) / 10; labs.k = Math.round((baseLabs.k + add) * 10) / 10;
+      notes.push(`K ${labs.k} (vs ${baseLabs.k} expected): K ${T.r(c.tot.k, 2)} mEq/kg/day exceeded what this patient could excrete (~${tol.k}).`);
+    }
+    if (tol.phos != null && c.tot.phos > tol.phos) {
+      const add = Math.round((c.tot.phos - tol.phos) * 2.2 * 10) / 10; labs.phos = Math.round((baseLabs.phos + add) * 10) / 10;
+      notes.push(`Phos ${labs.phos} (vs ${baseLabs.phos} expected): phosphate ${T.r(c.tot.phos, 2)} mmol/kg/day exceeded renal clearance.`);
+    }
+    return { labs, notes };
+  }
+
+  const L = (o) => Object.assign({ dbili: 0.4, alt: 30 }, o);
+
+  const CASES = {
+    t1: {
+      id: 't1', short: 'Baby A', title: 'Neonate after arterial switch — starting and advancing PN',
+      blurb: 'Day 1–5 of PN in a 3.4 kg neonate: start low, advance macros, correct a falling phosphate, start feeds, begin the wean.',
+      patient: { wt: 3.4, age: 'infant' }, fluidGoal: 100, access: 'central', calciumInfusion: false,
+      tol: { gir: 11, il: 2.5, aa: 4, k: 3 },
+      history: '5-day-old term neonate, POD 1 after arterial switch operation for TGA. Central line in place. NPO. Making good urine. Total fluid goal 100 mL/kg/day set by the CICU team (teaching assumption).',
+      days: [
+        { n: 1, title: 'PN day 1 — start', labs: L({ na: 138, k: 4.4, cl: 104, co2: 21, bun: 12, cr: 0.5, glu: 96, ca: 8.6, ica: 1.18, phos: 5.6, mg: 2.0, alb: 3.0, tg: 62, uop: 2.1 }), feeds: null,
+          narrative: 'NPO. No PN yet. Baseline labs back. Build the first PN order.',
+          teach: ['Start low and build — GIR roughly 4–8 mg/kg/min on day 1 in a neonate [default].', 'Start amino acids early (about 2–3 g/kg/day) [common] and lipid at ~1 g/kg/day [default].', 'Infant <1 yr: add L-cysteine [sheet].', 'Hold K until urine output is established and K is known — here UOP is good and K 4.4, so a modest K dose is reasonable [default].', 'Count lipid volume (5 mL per g of 20%) toward total fluids.'],
+          debrief: 'A conservative start leaves room to advance. Notice how much of the 100 mL/kg/day goal lipid and feeds will eventually need — concentrate dextrose rather than adding volume.' },
+        { n: 2, title: 'PN day 2 — advance', labs: L({ na: 137, k: 4.0, cl: 103, co2: 22, bun: 14, cr: 0.5, glu: 124, ca: 8.4, ica: 1.16, phos: 5.0, mg: 1.9, alb: 2.9, tg: 104, uop: 1.9 }), feeds: null,
+          narrative: 'Glucose 124, TG 104. Tolerating day 1 PN. Advance toward goal.',
+          teach: ['Glucose and TG both acceptable → advance dextrose (≈1–2 mg/kg/min/day) and lipid (0.5–1 g/kg/day) [default].', 'Advance AA toward ~3 g/kg/day [common].', 'Phosphate is drifting down (5.6 → 5.0) — anticipate need.'],
+          debrief: 'Advance one macronutrient decision at a time against labs: glucose gates dextrose, TG gates lipid, BUN/renal function gates protein.' },
+        { n: 3, title: 'PN day 3 — low phos, trophic feeds start', labs: L({ na: 137, k: 3.6, cl: 103, co2: 22, bun: 13, cr: 0.4, glu: 138, ca: 8.5, ica: 1.12, phos: 4.2, mg: 1.7, alb: 2.9, tg: 138, uop: 2.0 }), feeds: { n: 8, vol: 4, kcalOz: 20 },
+          narrative: 'Phos 4.2 (low for age), K 3.6, Mg 1.7. Trophic feeds started: 4 mL q3h of 20 kcal/oz.',
+          teach: ['Phos low → minor increase +0.25 mmol/kg/day (below ~2.5 mg/dL → major +0.5) [sheet].', 'K 3.6 is low-normal — a minor increase (+1 mEq/kg/day) is reasonable if UOP stays good [sheet steps].', 'Check Ca:Phos balance (Ca gluconate mEq ÷ 2 = mmol) and phos <2 mmol/100 mL [sheet].', 'Trophic feeds give almost no calories — do not wean PN yet.'],
+          debrief: 'Raising phos without keeping Ca in step risks precipitation and Ca imbalance. Trophic feeds are for gut priming, not calories.' },
+        { n: 4, title: 'PN day 4 — feeds advance', labs: L({ na: 138, k: 3.9, cl: 104, co2: 23, bun: 12, cr: 0.4, glu: 146, ca: 8.7, ica: 1.16, phos: 4.8, mg: 1.9, alb: 3.0, tg: 162, uop: 2.2 }), feeds: { n: 8, vol: 12, kcalOz: 20 },
+          narrative: 'Feeds now 12 mL q3h (~28 mL/kg/day). TG 162 and climbing. Glucose 146.',
+          teach: ['Count enteral kcal — total kcal/kg is now PN + feeds [sheet].', 'TG is rising but below 200 — continue, but do not push lipid higher than needed; recheck.', 'Plan the wean: as feeds reach ~50% of calories reduce PN [common].'],
+          debrief: 'Total energy matters — avoid overfeeding as enteral calories accumulate. Watch the TG trend, not just today\'s value.' },
+        { n: 5, title: 'PN day 5 — wean', labs: L({ na: 137, k: 4.0, cl: 103, co2: 23, bun: 11, cr: 0.4, glu: 140, ca: 8.8, ica: 1.18, phos: 5.2, mg: 2.0, alb: 3.1, tg: 178, uop: 2.3 }), feeds: { n: 8, vol: 25, kcalOz: 22 },
+          narrative: 'Feeds 25 mL q3h of 22 kcal/oz (~59 mL/kg/day). Labs stable. TG 178.',
+          teach: ['Enteral share is climbing — reduce PN to keep total kcal at goal rather than exceeding it [default].', 'Reduce lipid first if TG still rising (TG 178 trending up) [default].', 'When feeds ≥~75% of calories consider stopping PN [common].'],
+          debrief: 'Weaning is just the same arithmetic run backwards: goal total kcal/kg − enteral kcal/kg = PN kcal/kg still needed.' }
+      ]
+    },
+
+    t2: {
+      id: 't2', short: 'Baby B', title: 'Glenn with chylothorax on a furosemide infusion',
+      blurb: 'Fluid-restricted infant losing K, Cl, Mg and albumin: concentrate PN, shift Cl/acetate, and think through lipid and feeds in chylothorax.',
+      patient: { wt: 6.8, age: 'infant' }, fluidGoal: 90, access: 'central', calciumInfusion: false,
+      tol: { gir: 10, il: 3, aa: 3.5, k: 4 },
+      history: '8-month-old, POD 5 after bidirectional Glenn. Chest tube output turned milky — chylothorax. On a furosemide infusion for fluid balance. Total fluids restricted to 90 mL/kg/day by the team.',
+      days: [
+        { n: 1, title: 'PN day 1 — chylothorax, diuresis', labs: L({ na: 134, k: 3.3, cl: 96, co2: 31, bun: 14, cr: 0.3, glu: 98, ca: 8.4, ica: 1.15, phos: 4.9, mg: 1.5, alb: 2.4, tg: 70, uop: 3.0 }), feeds: null,
+          narrative: 'NPO for chylothorax. Na 134, K 3.3, Cl 96, CO₂ 31 (hypochloremic metabolic alkalosis from loop diuretic), Mg 1.5, albumin 2.4.',
+          teach: ['Hypochloremic alkalosis on loop diuretics → favor chloride salts over acetate [default].', 'K 3.3 and Mg 1.5 are low — minor/major increases from the sheet table [sheet].', 'Albumin 2.4: correct total Ca (measured + 0.8 × (4 − albumin)) and use ionized Ca [sheet note].', 'Fluid restriction means concentrating PN (higher dextrose %, fewer mL) — still check GIR.', 'IV lipid bypasses the gut, so it does not increase chyle flow like enteral long-chain fat; protocols vary [common — verify].'],
+          debrief: 'The acid–base picture dictates the anion: chloride when alkalotic from diuretics; acetate (→ bicarbonate) when acidotic or hyperchloremic.' },
+        { n: 2, title: 'PN day 2', labs: L({ na: 136, k: 3.8, cl: 99, co2: 29, bun: 15, cr: 0.3, glu: 112, ca: 8.6, ica: 1.17, phos: 4.7, mg: 1.8, alb: 2.4, tg: 96, uop: 3.1 }), feeds: null,
+          narrative: 'Improving. K 3.8, Cl 99, CO₂ 29. Chest tube still milky.',
+          teach: ['Do not over-correct — keep chloride-predominant while CO₂ is still high.', 'Advance macros against glucose/TG as in any PN day.', 'Fluid goal is unchanged, so rate stays tight.'],
+          debrief: 'Electrolyte corrections work quickly in a patient losing them daily — re-check before the next increase.' },
+        { n: 3, title: 'PN day 3 — fat-free feeds start', labs: L({ na: 137, k: 4.1, cl: 101, co2: 27, bun: 14, cr: 0.3, glu: 120, ca: 8.8, ica: 1.18, phos: 4.5, mg: 1.9, alb: 2.5, tg: 118, uop: 2.8 }), feeds: { n: 8, vol: 20, kcalOz: 20 },
+          narrative: 'Fat-free (MCT-based) feeds started at 20 mL q3h (~24 mL/kg/day). Furosemide being weaned.',
+          teach: ['Feeds add volume against a fixed fluid goal — PN volume must come down as feeds go up.', 'K and Cl normalized; hold further K/Cl increases if the diuretic is weaning [default].', 'Keep protein generous — albumin and protein are being lost in chyle [common].'],
+          debrief: 'Whenever feeds advance under a fixed fluid goal, re-compute total fluids; calories come from concentrating, not from more volume.' },
+        { n: 4, title: 'PN day 4 — wean diuretic', labs: L({ na: 138, k: 4.3, cl: 102, co2: 25, bun: 13, cr: 0.3, glu: 124, ca: 8.9, ica: 1.2, phos: 4.8, mg: 2.0, alb: 2.7, tg: 130, uop: 2.4 }), feeds: { n: 8, vol: 35, kcalOz: 20 },
+          narrative: 'Chyle output falling. Feeds 35 mL q3h (~41 mL/kg/day). Electrolytes normal.',
+          teach: ['With less diuretic, reduce supplemental K/Mg so levels do not overshoot [default].', 'Enteral calories are a larger share — shrink PN accordingly.'],
+          debrief: 'The same electrolyte plan that fixed deficits becomes an excess a few days later if you do not de-escalate with the cause.' }
+      ]
+    },
+
+    t3: {
+      id: 't3', short: 'Child C', title: 'Child with AKI and steroid hyperglycemia',
+      blurb: 'BUN ≥30, high K/phos/Mg, hyperglycemia, oliguria — reduce protein, remove K/phos/Mg, hold dextrose, then reintroduce as renal function recovers.',
+      patient: { wt: 18, age: 'child' }, fluidGoal: 80, access: 'central', calciumInfusion: false,
+      tol: { gir: 5, il: 2, aa: 1.3, k: 1, phos: 0.3 },
+      history: '4-year-old, 18 kg, POD 3 after a complex repair with low cardiac output. Acute kidney injury (oliguria). Receiving dexamethasone. Fluid restricted to 80 mL/kg/day.',
+      days: [
+        { n: 1, title: 'PN day 1 — AKI + hyperglycemia', labs: L({ na: 139, k: 5.3, cl: 105, co2: 19, bun: 34, cr: 1.1, glu: 214, ca: 8.9, ica: 1.2, phos: 6.8, mg: 2.7, alb: 3.4, tg: 120, uop: 0.6 }), feeds: null,
+          narrative: 'BUN 34, Cr 1.1, K 5.3, phos 6.8, Mg 2.7, glucose 214, UOP 0.6 mL/kg/hr.',
+          teach: ['BUN ≥30 → decrease protein by 0.5–1 g/kg/day [sheet].', 'Be conservative with K, Phos and Mg in renal dysfunction — remove them while high [sheet].', 'Glucose >180: do not advance dextrose; lower GIR; consider insulin per protocol [default].', 'Fluid restriction + oliguria: avoid volume stacking.'],
+          debrief: 'In AKI, you provide energy (dextrose/lipid within tolerance) while withholding what the kidney cannot clear.' },
+        { n: 2, title: 'PN day 2', labs: L({ na: 138, k: 5.1, cl: 104, co2: 20, bun: 38, cr: 1.3, glu: 188, ca: 9.0, ica: 1.22, phos: 6.5, mg: 2.6, alb: 3.3, tg: 128, uop: 0.7 }), feeds: null,
+          narrative: 'BUN 38, Cr 1.3, K 5.1, phos 6.5. Glucose 188. UOP 0.7.',
+          teach: ['Keep K/Phos/Mg out until trending down and UOP returns.', 'Protein stays reduced.', 'Glucose improving — still hold, do not advance.'],
+          debrief: 'Stable-but-abnormal means hold, not advance.' },
+        { n: 3, title: 'PN day 3 — turning the corner', labs: L({ na: 137, k: 4.6, cl: 103, co2: 21, bun: 31, cr: 1.0, glu: 150, ca: 9.1, ica: 1.2, phos: 5.5, mg: 2.3, alb: 3.4, tg: 135, uop: 1.1 }), feeds: null,
+          narrative: 'UOP 1.1, BUN 31, K 4.6, phos 5.5, glucose 150.',
+          teach: ['BUN still ≥30 — keep protein reduced [sheet].', 'Glucose now acceptable — cautious GIR advance possible [default].', 'K normalizing — continue to hold K for now.'],
+          debrief: 'Recovery is gradual: step one variable at a time.' },
+        { n: 4, title: 'PN day 4 — reintroduce', labs: L({ na: 138, k: 4.3, cl: 103, co2: 22, bun: 24, cr: 0.8, glu: 142, ca: 9.2, ica: 1.2, phos: 4.8, mg: 2.1, alb: 3.5, tg: 140, uop: 1.5 }), feeds: null,
+          narrative: 'BUN 24, Cr 0.8, K 4.3, phos 4.8, Mg 2.1. UOP 1.5.',
+          teach: ['BUN <30 → protein can be advanced again, stepwise (~0.5 g/kg/day) [default].', 'Low-dose K/phos/Mg can be reintroduced as levels normalize and UOP is adequate [default].'],
+          debrief: 'Reintroduce slowly and recheck — what you removed for the kidney comes back in small steps.' }
+      ]
+    },
+
+    t4: {
+      id: 't4', short: 'Baby D', title: 'Prolonged PN: rising TG and early cholestasis',
+      blurb: 'PN day 21 with TG 340 and direct bilirubin 2.8 — hold lipid, add carnitine, re-balance calories, and plan for feeds and lipid alternatives.',
+      patient: { wt: 5.1, age: 'infant' }, fluidGoal: 120, access: 'central', calciumInfusion: false,
+      tol: { gir: 12, il: 1.5, aa: 4, k: 3.5 },
+      history: '7-month-old, 5.1 kg, PN day 21 after complex repair with persistent feeding intolerance on minimal trophic feeds. TG and direct bilirubin rising.',
+      days: [
+        { n: 1, title: 'PN day 21 — TG 340', labs: L({ na: 138, k: 4.2, cl: 103, co2: 23, bun: 8, cr: 0.3, glu: 120, ca: 9.1, ica: 1.2, phos: 5.3, mg: 2.1, alb: 2.8, tg: 340, dbili: 2.8, alt: 88, uop: 2.3 }), feeds: { n: 8, vol: 8, kcalOz: 20 },
+          narrative: 'TG 340, direct bilirubin 2.8, ALT 88. Currently on lipid 3 g/kg/day, GIR high-normal. Consider what to change.',
+          teach: ['TG >300 → hold lipid [sheet].', 'L-carnitine 10 mg/kg/day (up to 20) may help lower TG in infants [sheet].', 'Direct bilirubin ≥2 suggests PN-associated cholestasis — minimize soybean-oil lipid load, advance enteral feeds if possible, discuss lipid alternatives (e.g., fish-oil-containing emulsions) with pharmacy/GI; protocols vary [common — verify].', 'Do not make up lost lipid kcal with a big dextrose jump — GIR stays within the 12–14 goal [sheet].'],
+          debrief: 'Removing lipid creates a calorie gap: protein should stay protected and dextrose raised only within GIR goal and glucose tolerance.' },
+        { n: 2, title: 'PN day 22', labs: L({ na: 138, k: 4.3, cl: 103, co2: 23, bun: 8, cr: 0.3, glu: 128, ca: 9.2, ica: 1.2, phos: 5.2, mg: 2.1, alb: 2.8, tg: 285, dbili: 2.8, alt: 84, uop: 2.2 }), feeds: { n: 8, vol: 10, kcalOz: 20 },
+          narrative: 'TG 285 after the change. Direct bili 2.8.',
+          teach: ['TG 200–300: hold lipid advancement [sheet] — do not re-advance yet.', 'Recheck TG daily until clearly below 200.'],
+          debrief: 'TG responds within 24–48 h; keep the intervention steady until it clearly turns.' },
+        { n: 3, title: 'PN day 23', labs: L({ na: 138, k: 4.2, cl: 103, co2: 23, bun: 8, cr: 0.3, glu: 125, ca: 9.2, ica: 1.2, phos: 5.2, mg: 2.1, alb: 2.9, tg: 210, dbili: 2.7, alt: 80, uop: 2.2 }), feeds: { n: 8, vol: 15, kcalOz: 20 },
+          narrative: 'TG 210. Feeds creeping up.',
+          teach: ['Still ≥200: hold advancement [sheet].', 'Enteral calories are rising — count them.'],
+          debrief: 'Steady improvement does not mean re-advance immediately; wait for clearly acceptable values.' },
+        { n: 4, title: 'PN day 24', labs: L({ na: 138, k: 4.2, cl: 103, co2: 24, bun: 8, cr: 0.3, glu: 122, ca: 9.3, ica: 1.2, phos: 5.3, mg: 2.1, alb: 2.9, tg: 175, dbili: 2.6, alt: 74, uop: 2.3 }), feeds: { n: 8, vol: 25, kcalOz: 22 },
+          narrative: 'TG 175. Feeds ~39 mL/kg/day at 22 kcal/oz. Direct bili 2.6.',
+          teach: ['TG <200: lipid may be restarted at a conservative dose rather than the old 3 g/kg/day [default].', 'Keep protecting the liver: advance feeds, minimize PN duration.'],
+          debrief: 'Cholestasis management is a trajectory: less PN, more gut, smarter lipid.' }
+      ]
+    }
+  };
+
+  function labsFor(cs, idx, prevOrder) { return react(cs, idx, prevOrder, cs.days[idx].labs); }
+
+  function startOrderForDay(cs, idx, prevOrder) {
+    const o = prevOrder ? T.cloneOrder(prevOrder) : T.emptyOrder();
+    o.access = cs.access; o.calciumInfusion = !!cs.calciumInfusion;
+    const f = cs.days[idx].feeds; o.feeds = f ? { n: f.n, vol: f.vol, kcalOz: f.kcalOz } : { n: 0, vol: 0, kcalOz: 0 };
+    return o;
+  }
+
+  // Sandbox patient presets for Teach mode
+  const PRESETS = [
+    { id: 'blank-infant', label: 'Blank infant (3.4 kg)', patient: { wt: 3.4, age: 'infant' } },
+    { id: 'blank-child', label: 'Blank child (14 kg)', patient: { wt: 14, age: 'child' } },
+    { id: 'blank-adol', label: 'Blank adolescent (52 kg)', patient: { wt: 52, age: 'adolescent' } }
+  ];
+
+  root.TPNC = Object.assign(root.TPNC || {}, { LAB_ORDER, CASES, PRESETS, labsFor, startOrderForDay });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Learn modules. Source tags:  S = TCPCHD cheat sheet · C = commonly cited (verify locally) · D = teaching default. */
+(function (root) {
+  'use strict';
+  const T = root.TPN;
+  const S = '<span class="tag tag-s" title="From the TCPCHD TPN &amp; TF cheat sheet">sheet</span>';
+  const C = '<span class="tag tag-c" title="Commonly cited — verify against your institutional protocol">verify</span>';
+  const D = '<span class="tag tag-d" title="Teaching default — replace with your institution\'s protocol">default</span>';
+
+  const num = (c, k) => c[k];
+  const ord = (o) => Object.assign(T.emptyOrder(), o || {});
+
+  const MODULES = [
+    {
+      id: 'm1', title: 'TPN fundamentals', min: 10,
+      objectives: ['List what is in a pediatric PN prescription and why each part is there.', 'Choose peripheral vs central access using dextrose % and osmolarity.', 'Name the main risks that drive monitoring.'],
+      body: `
+<h3>What PN is</h3>
+<p>Parenteral nutrition supplies calories (dextrose and lipid), protein (amino acids), fluid, electrolytes/minerals, vitamins and trace elements when the gut cannot meet needs. In pediatric cardiac patients common reasons are post-operative feeding intolerance, low-output states, gut ischemia concerns, chylothorax and prolonged NPO periods.</p>
+<h3>The building blocks (and how this lab models them)</h3>
+<ul>
+ <li><b>Dextrose</b> — 3.4 kcal/g ${S}. Ordered as a concentration (%); delivery is judged by the glucose infusion rate (GIR).</li>
+ <li><b>Amino acids</b> — 4 kcal/g ${S}. Ordered in g/kg/day.</li>
+ <li><b>Lipid</b> — 10 kcal/g (20% emulsion = 2 kcal/mL) ${S}. Ordered in g/kg/day; 5 mL per gram of 20%.</li>
+ <li><b>Electrolytes</b> — Na, K, Cl/acetate, phosphate, Ca, Mg. Ordered per kg/day; the bag label shows mEq/L.</li>
+ <li><b>Additives</b> — L-cysteine (infants), L-carnitine, vitamins and trace elements, insulin when needed. This lab models cysteine and carnitine.</li>
+</ul>
+<h3>Access and osmolarity</h3>
+<p>Concentrated PN damages small peripheral veins. A commonly cited peripheral ceiling is about <b>12.5% dextrose</b> and <b>~900 mOsm/L</b> ${C}; anything more concentrated needs central access. The lab shows an <i>estimated</i> osmolarity — pharmacy's compounded value is the one that counts.</p>
+<h3>Risks that drive monitoring</h3>
+<p>Line infection, hyper-/hypoglycemia, hypertriglyceridemia, electrolyte and mineral shifts, refeeding, cholestasis/PN-associated liver disease, essential fatty acid deficiency (too little lipid), metabolic bone disease, and fluid overload — especially important in cardiac patients.</p>`,
+      tasks: [{
+        type: 'order', prompt: 'This 8 kg infant has only a <b>peripheral</b> IV. Build a PN at 20 mL/hr that is peripheral-safe: dextrose ≤12.5%, estimated osmolarity ≤900 mOsm/L, with amino acids included.',
+        patient: { wt: 8, age: 'infant' }, start: ord({ rate: 20, access: 'peripheral' }),
+        hint: 'Amino acids and sodium add a lot of osmolarity at a small rate. Try dextrose ~10%, AA 1.5 g/kg/day, modest sodium.',
+        check: (c, o) => [
+          { ok: o.access === 'peripheral' && c.dex <= 12.5 && c.dex > 0, msg: `Dextrose ${c.dex}% (≤12.5%)` },
+          { ok: c.osm <= 900, msg: `Estimated osmolarity ${Math.round(c.osm)} mOsm/L (≤900)` },
+          { ok: c.aa > 0, msg: `Amino acids ${c.aa} g/kg/day included` }]
+      }],
+      quiz: [
+        { q: 'The main factor limiting peripheral PN is:', opts: ['Total calories', 'Osmolarity / dextrose concentration', 'Lipid dose', 'Weight'], ans: 1, why: 'Hyperosmolar solutions injure peripheral veins (phlebitis, infiltration). Concentrated PN needs central access.' },
+        { q: 'Which complication is most tied to PN duration in infants?', opts: ['Hypoglycemia', 'Cholestasis / PN-associated liver disease', 'Hypernatremia', 'Alkalosis'], ans: 1, why: 'Cholestasis risk climbs with PN duration and soybean-oil lipid load, especially in infants — one reason to advance feeds and shorten PN.' },
+        { q: 'Before any PN calculation you should first confirm:', opts: ['The lipid brand', 'The dosing weight', 'The line length', 'The feeding schedule'], ans: 1, why: 'Every dose is per kg; a wrong weight scales every number (GIR, kcal/kg, mEq/kg/day) wrongly.' }
+      ]
+    },
+
+    {
+      id: 'm2', title: 'Reading an order: volume & units', min: 8,
+      objectives: ['Convert mL/hr ↔ mL/kg/day and L/day.', 'Explain why bag concentration (mEq/L) differs from dose (mEq/kg/day).'],
+      body: `
+<h3>Three ways to say the same volume</h3>
+<p><b>TPN L/day = mL/hr × 24 ÷ 1000</b> ${S} and <b>mL/kg/day = mL/hr × 24 ÷ weight</b>. A 5 kg infant on 20 mL/hr gets 480 mL/day = 96 mL/kg/day.</p>
+<h3>Dose vs concentration</h3>
+<p>Electrolytes are dosed in <b>mEq/kg/day</b> but the pharmacy label shows <b>mEq/L</b>. Convert with TPN L/day: <b>mEq/kg/day = mEq/L × TPN L/day ÷ weight</b> and the reverse ${S}. If you hold the dose and change the rate, the concentration changes — and vice versa.</p>
+<h3>Practice habit</h3>
+<p>Always write the unit. Most calculation errors in PN are unit errors (mmol vs mEq, per day vs per kg, mL vs L).</p>`,
+      tasks: [
+        { type: 'numeric', prompt: 'A 6 kg infant needs 120 mL/kg/day of PN. What TPN rate (mL/hr) is that?', unit: 'mL/hr', answer: () => 120 * 6 / 24, tol: 0.03, explain: '120 × 6 ÷ 24 = 30 mL/hr.' },
+        { type: 'numeric', prompt: 'PN is running at 18 mL/hr in a 7.2 kg child. How many mL/kg/day is that?', unit: 'mL/kg/day', answer: () => 18 * 24 / 7.2, tol: 0.03, explain: '18 × 24 ÷ 7.2 = 60 mL/kg/day.' }
+      ],
+      quiz: [
+        { q: '5 kg infant, PN at 20 mL/hr. mL/kg/day?', opts: ['48', '96', '100', '480'], ans: 1, why: '20 × 24 = 480 mL/day ÷ 5 kg = 96 mL/kg/day.' },
+        { q: 'If you keep Na at 3 mEq/kg/day but halve the TPN rate, the Na concentration (mEq/L) will:', opts: ['Halve', 'Stay the same', 'Double', 'Be zero'], ans: 2, why: 'mEq/L = dose × weight ÷ TPN L/day. Half the volume carrying the same dose doubles concentration.' },
+        { q: 'Which unit is phosphate dosed in on the cheat sheet?', opts: ['mEq/kg/day', 'mmol/kg/day', 'mg/dL', 'mOsm/L'], ans: 1, why: 'Phosphate is mmol; calcium gluconate and magnesium are mEq. Mixing them causes ratio errors.' }
+      ]
+    },
+
+    {
+      id: 'm3', title: 'Dextrose & GIR', min: 10,
+      objectives: ['Calculate GIR and set dextrose % to hit a target GIR.', 'Know age goals and when to hold or reduce.'],
+      body: `
+<h3>GIR</h3>
+<p><b>GIR (mg/kg/min) = dextrose % × mL/hr ÷ weight ÷ 6</b> ${S}. The 6 converts % (g per 100 mL → 10 mg/mL) and mL/hr to mg/min.</p>
+<h3>Goals by age</h3>
+<p>Infants 12–14, children 8–10, adolescents 5–6 mg/kg/min ${S}. Those are <i>goals</i>: you start lower and advance (about 1–2 mg/kg/min/day ${D}) as glucose allows.</p>
+<h3>When to hold or back off</h3>
+<ul>
+ <li>Glucose &gt;180 mg/dL: don't advance; consider lowering GIR/insulin ${D}.</li>
+ <li>High dextrose loads raise CO₂ production — be careful in respiratory failure ${S}.</li>
+ <li>Very low GIR (&lt;~2.5) risks hypoglycemia if no other glucose source ${D}.</li>
+</ul>`,
+      tasks: [
+        { type: 'order', prompt: '4.0 kg infant running PN at 16 mL/hr. Set the dextrose % that delivers a <b>GIR of 8 mg/kg/min</b> (±0.4).', patient: { wt: 4, age: 'infant' }, start: ord({ rate: 16 }), hint: 'dextrose % = GIR × 6 × weight ÷ mL/hr.',
+          check: (c) => [{ ok: Math.abs(c.gir - 8) <= 0.4, msg: `GIR ${T.r(c.gir)} (target 8 ± 0.4)` }] },
+        { type: 'numeric', prompt: 'What GIR does D12.5 at 20 mL/hr give a 5 kg infant?', unit: 'mg/kg/min', answer: () => 12.5 * 20 / 5 / 6, tol: 0.03, explain: '12.5 × 20 ÷ 5 ÷ 6 = 8.33.' }
+      ],
+      quiz: [
+        { q: 'GIR 9 mg/kg/min and glucose 220. Best action?', opts: ['Advance dextrose', 'Hold/reduce GIR and reassess (consider insulin)', 'Stop all amino acids', 'Add more lipid'], ans: 1, why: 'Hyperglycemia gates dextrose: don\'t advance, consider lowering, and look for contributors (steroids, sepsis, stress).' },
+        { q: 'Why be cautious with high dextrose in respiratory failure?', opts: ['It lowers pH only', 'Glucose oxidation produces more CO₂', 'It causes hypocalcemia', 'It raises BUN'], ans: 1, why: 'Excess carbohydrate raises CO₂ production, increasing ventilatory demand.' },
+        { q: 'The goal GIR for a child (1–10 yr) on the cheat sheet is:', opts: ['5–6', '8–10', '12–14', '16–18'], ans: 1, why: 'Infants 12–14, children 8–10, adolescents 5–6 mg/kg/min.' }
+      ]
+    },
+
+    {
+      id: 'm4', title: 'Amino acids & protein', min: 8,
+      objectives: ['Dose protein per kg and calculate its kcal.', 'Apply the infant L-cysteine and BUN rules.'],
+      body: `
+<h3>Dose</h3>
+<p>AA is ordered in <b>g/kg/day</b> and provides <b>4 kcal/g</b> ${S}. Commonly cited goals: infants ~2–3, children 1–10 yr ~1–2, adolescents ~0.8–1.5 g/kg/day ${C}. Start early and advance in ~0.5 g/kg/day steps ${D}.</p>
+<h3>L-cysteine</h3>
+<p><b>If &lt;1 year: must add L-cysteine</b> ${S}. Infants make cysteine poorly; it also acidifies the solution, which helps calcium–phosphate stay in solution.</p>
+<h3>Renal and hepatic dysfunction</h3>
+<p>Be conservative with protein; <b>when BUN ≥30, decrease protein by 0.5–1 g/kg/day</b> and monitor BUN closely ${S}.</p>`,
+      tasks: [
+        { type: 'order', prompt: '3.4 kg neonate at 14 mL/hr. Order amino acids between <b>2 and 3 g/kg/day</b> and include the required infant additive.', patient: { wt: 3.4, age: 'infant' }, start: ord({ rate: 14, dex: 10 }),
+          check: (c, o) => [{ ok: c.aa >= 2 && c.aa <= 3, msg: `AA ${c.aa} g/kg/day (2–3)` }, { ok: !!o.cysteine, msg: 'L-cysteine added' }] },
+        { type: 'numeric', prompt: 'A 6 kg infant is on 2.5 g/kg/day amino acids. How many kcal/day from protein?', unit: 'kcal/day', answer: () => 2.5 * 6 * 4, tol: 0.03, explain: '2.5 × 6 = 15 g × 4 kcal/g = 60 kcal.' }
+      ],
+      quiz: [
+        { q: 'Protein provides how many kcal per gram?', opts: ['3.4', '4', '9', '10'], ans: 1, why: 'Amino acids 4, dextrose 3.4, lipid 10 kcal/g (as used on the sheet).' },
+        { q: 'BUN is 34 on 2.5 g/kg/day AA. The cheat sheet says:', opts: ['Advance AA', 'Decrease protein by 0.5–1 g/kg/day', 'Stop dextrose', 'Double the lipid'], ans: 1, why: 'BUN ≥30 → reduce protein 0.5–1 g/kg/day and follow BUN closely.' },
+        { q: 'Why add L-cysteine in infants?', opts: ['Raises glucose', 'Conditionally essential in infants and aids Ca/Phos solubility', 'Lowers TG', 'Replaces carnitine'], ans: 1, why: 'Infants have limited cysteine synthesis; cysteine also lowers pH, improving calcium–phosphate solubility.' }
+      ]
+    },
+
+    {
+      id: 'm5', title: 'Lipids, triglycerides & L-carnitine', min: 12,
+      objectives: ['Dose lipid, count its calories and volume.', 'Apply the TG hold rules.', 'Know when and how to use L-carnitine.'],
+      body: `
+<h3>Dose, calories, volume</h3>
+<p>Lipid in g/kg/day × weight × 10 kcal/g ${S}. 20% emulsion contains 0.2 g/mL, so <b>5 mL per gram</b>: 2 g/kg/day in a 5 kg infant is 10 g = 50 mL/day. The cheat sheet's total-fluid line does not include this volume — in fluid-restricted cardiac patients add it.</p>
+<p>Usual practice: start ~1 g/kg/day, advance 0.5–1 g/kg/day, usual ceiling ~3 g/kg/day ${D}${C}.</p>
+<h3>Triglyceride rules</h3>
+<ul>
+ <li><b>TG 200–300:</b> hold advancement ${S}.</li>
+ <li><b>TG &gt;300:</b> hold lipid ${S} (some protocols reduce to 0.5–1 g/kg/day to avoid essential fatty acid deficiency — follow local policy).</li>
+</ul>
+<p>Look for modifiable contributors: excess dextrose, sepsis, steroids, other lipid sources (e.g., propofol), prolonged PN.</p>
+<h3>L-carnitine</h3>
+<p>L-carnitine <b>helps lower TG; 10 mg/kg/day for infants, up to 20 mg/kg/day</b> ${S}. Most relevant with prolonged PN or low carnitine stores.</p>
+<h3>Lipid type</h3>
+<p>Pharmacy/GI may choose soy-, mixed-oil (e.g., SMOF) or fish-oil emulsions, especially with cholestasis ${C}. The lab treats them as "lipid g/kg/day".</p>`,
+      tasks: [
+        { type: 'order', prompt: '5 kg infant on lipid 2 g/kg/day. <b>TG today is 260.</b> Revise the order: do not advance lipid, and add L-carnitine in the cheat-sheet range.', patient: { wt: 5, age: 'infant' }, ctx: { tg: 260 },
+          start: ord({ rate: 18, dex: 12, aa: 2.5, il: 2, cysteine: true }), prev: ord({ rate: 18, dex: 12, aa: 2.5, il: 2, cysteine: true }),
+          check: (c, o) => [{ ok: c.il <= 2, msg: `Lipid ${c.il} g/kg/day (not above 2)` }, { ok: T.num(o.carnitine) >= 10 && T.num(o.carnitine) <= 20, msg: `L-carnitine ${o.carnitine || 0} mg/kg/day (10–20)` }] },
+        { type: 'numeric', prompt: 'A 3.8 kg infant is on lipid 2.5 g/kg/day (20% emulsion). How many mL/day of lipid is that?', unit: 'mL/day', answer: () => 2.5 * 3.8 * T.IL_ML_PER_G, tol: 0.03, explain: '2.5 × 3.8 = 9.5 g × 5 mL/g = 47.5 mL.' }
+      ],
+      quiz: [
+        { q: 'TG is 250 and lipid is 1.5 g/kg/day. Best move?', opts: ['Advance to 2.5', 'Hold advancement and recheck', 'Double carnitine only', 'Stop amino acids'], ans: 1, why: 'TG 200–300 → hold advancement (not necessarily reduce); recheck, address contributors.' },
+        { q: '2 g/kg/day lipid provides how many kcal/kg/day?', opts: ['8', '10', '20', '40'], ans: 2, why: '2 g × 10 kcal/g = 20 kcal/kg/day.' },
+        { q: 'Cheat-sheet L-carnitine dosing for infants:', opts: ['1–2 mg/kg/day', '10 up to 20 mg/kg/day', '100 mg/kg/day', '2 mEq/kg/day'], ans: 1, why: '10 mg/kg/day for infants, up to 20 mg/kg/day.' }
+      ]
+    },
+
+    {
+      id: 'm6', title: 'Total calories, protein–energy & fluids', min: 12,
+      objectives: ['Add PN and enteral calories to a total kcal/kg/day.', 'Check calories against goals and fluids against a restriction.'],
+      body: `
+<h3>Add everything</h3>
+<p><b>Total kcal/kg/day = PN kcal/kg + enteral kcal/kg</b> ${S}. Enteral kcal/kg = feeds/day × volume ÷ 30 × (kcal per 30 mL) ÷ weight. Goals on the sheet: infants 85–105 (non-cardiac), adolescents 30–50 kcal/kg/day ${S}. The sheet lists no child goal — this lab uses ~60–90 ${C}; cardiac patients may differ, so set the goal with the team.</p>
+<h3>Where the calories come from</h3>
+<p>Look at the split among dextrose, protein and lipid. Protein should not be spent as fuel: enough non-protein calories (roughly 150–250 kcal per g of nitrogen, i.e. about 25–40 kcal per g of protein, is a usual teaching aim ${C}) spare protein for growth. The lab shows this as the NPC:N ratio.</p>
+<h3>Fluids</h3>
+<p><b>Total fluids = (TPN + IVF) × 24 ÷ wt + feeds mL/kg + lipid mL/kg.</b> In a fluid-restricted patient you get calories by <i>concentrating</i>, not by adding volume.</p>`,
+      tasks: [
+        { type: 'order', prompt: '5 kg infant already getting feeds (8 × 30 mL of 20 kcal/oz). Build PN so <b>total kcal is 85–105/kg/day</b>, <b>total fluids ≤120 mL/kg/day</b> (including lipid), GIR ≤14, and AA ≥2 g/kg/day.', patient: { wt: 5, age: 'infant' },
+          start: ord({ rate: 12, cysteine: true, feeds: { n: 8, vol: 30, kcalOz: 20 } }), fluidGoal: 120,
+          hint: 'Feeds supply ~32 kcal/kg and 48 mL/kg. Remaining PN volume is what is left under 120 minus lipid mL/kg.',
+          check: (c) => [{ ok: c.totalKcalKg >= 85 && c.totalKcalKg <= 105, msg: `Total ${T.r(c.totalKcalKg, 0)} kcal/kg/day (85–105)` }, { ok: c.totalFluids <= 120, msg: `Total fluids ${T.r(c.totalFluids, 0)} mL/kg/day (≤120)` }, { ok: c.gir <= 14 && c.gir > 0, msg: `GIR ${T.r(c.gir)} (≤14)` }, { ok: c.aa >= 2, msg: `AA ${c.aa} g/kg/day (≥2)` }] }
+      ],
+      quiz: [
+        { q: 'Enteral: 8 feeds × 30 mL of 20 kcal/oz in a 5 kg infant ≈ ?', opts: ['16 kcal/kg', '32 kcal/kg', '64 kcal/kg', '160 kcal/kg'], ans: 1, why: '240 mL ÷ 30 × 20 = 160 kcal ÷ 5 kg = 32 kcal/kg/day.' },
+        { q: 'To raise calories in a fluid-restricted infant you should mainly:', opts: ['Increase the rate', 'Concentrate the PN', 'Stop lipid', 'Add IVF'], ans: 1, why: 'Concentrate dextrose (within GIR/access limits) rather than adding volume.' },
+        { q: 'The cheat-sheet total fluid line omits:', opts: ['IVF', 'Feeds', 'Lipid volume', 'TPN'], ans: 2, why: 'Lipid is run as its own volume; add 5 mL per gram of 20% emulsion.' }
+      ]
+    },
+
+    {
+      id: 'm7', title: 'Electrolytes I: Na, K, Cl/acetate', min: 12,
+      objectives: ['Convert between bag mEq/L and mEq/kg/day.', 'Count K from K-phos.', 'Choose chloride vs acetate from the acid–base picture.'],
+      body: `
+<h3>Ranges (cheat sheet ${S})</h3>
+<p>Sodium 2–5 mEq/kg/day (infants/children), 1–2 (adolescents). Potassium 2–4 (infants/children), 1–2 (adolescents).</p>
+<h3>Counting potassium</h3>
+<p>K total = KCl + K-acetate + <b>1.5 × K-phos (mmol)</b> ${S}: each mmol of potassium phosphate carries 1.5 mEq K.</p>
+<h3>Adjusting</h3>
+<p>Sodium minor: ½NS → ¾NS → NS or +1–2 mEq/kg/day; major: ½NS → NS or +3–4. Potassium minor +1 mEq/kg/day (10 mEq/L), major +1.5–2 (20 mEq/L). Remember NS = 154, ½NS = 77, ¼NS = 38 mEq/L ${S}.</p>
+<h3>Chloride vs acetate</h3>
+<p>Acetate is converted to bicarbonate: useful in metabolic acidosis or hyperchloremia. With loop diuretics (hypochloremic alkalosis) favor chloride ${D}. Acetate steps: minor +1, major +2 mEq/kg/day ${S}.</p>
+<h3>Safety</h3>
+<p>In renal dysfunction or oliguria be conservative with K ${S}; hyperkalemia → remove K until it falls.</p>`,
+      tasks: [
+        { type: 'numeric', prompt: 'A bag contains K 30 mEq/L and runs at 20 mL/hr in a 7 kg child. What is the K dose in mEq/kg/day?', unit: 'mEq/kg/day', answer: () => 30 * (20 * 24 / 1000) / 7, tol: 0.03, explain: '30 × 0.48 L/day ÷ 7 kg = 2.06.' },
+        { type: 'numeric', prompt: 'Orders: KCl 1.0 mEq/kg/day, K-acetate 0.5 mEq/kg/day, K-phos 0.4 mmol/kg/day. Total potassium (mEq/kg/day)?', unit: 'mEq/kg/day', answer: () => 1 + 0.5 + 0.4 * 1.5, tol: 0.02, explain: '1.0 + 0.5 + 1.5 × 0.4 = 2.1.' },
+        { type: 'order', prompt: '6.8 kg infant on furosemide: Na 134, K 3.3, Cl 96, CO₂ 31 (alkalosis). Set total K <b>2–4 mEq/kg/day</b>, total Na ≥2, and make <b>chloride exceed acetate</b>.', patient: { wt: 6.8, age: 'infant' }, ctx: { na: 134, k: 3.3, cl: 96, co2: 31 },
+          start: ord({ rate: 22, dex: 12, aa: 2.5, il: 1, cysteine: true, lytes: { naCl: 2, kAc: 1 } }),
+          check: (c) => [{ ok: c.tot.k >= 2 && c.tot.k <= 4, msg: `K ${T.r(c.tot.k, 2)} mEq/kg/day (2–4)` }, { ok: c.tot.na >= 2, msg: `Na ${T.r(c.tot.na, 2)} mEq/kg/day (≥2)` }, { ok: c.tot.cl > c.tot.acetate, msg: `Chloride ${T.r(c.tot.cl, 2)} > acetate ${T.r(c.tot.acetate, 2)}` }] }
+      ],
+      quiz: [
+        { q: '0.4 mmol/kg/day of K-phos contributes how much K?', opts: ['0.4', '0.6', '1.0', '1.5'], ans: 1, why: '1 mmol K-phos = 1.5 mEq K → 0.6 mEq/kg/day.' },
+        { q: 'Loop diuretic, CO₂ 31, Cl 96. Prefer:', opts: ['More acetate', 'More chloride', 'Neither', 'Stop all sodium'], ans: 1, why: 'Chloride supplies the missing anion; acetate would add bicarbonate equivalents to an alkalotic patient.' },
+        { q: 'Urine output 0.6 mL/kg/hr, K 5.3. In the TPN, K should be:', opts: ['Increased 1 mEq/kg/day', 'Held at current', 'Removed/minimized', 'Doubled'], ans: 2, why: 'Oliguria + high K → remove K until levels fall and urine output recovers.' }
+      ]
+    },
+
+    {
+      id: 'm8', title: 'Electrolytes II: Ca, Phos, Mg', min: 12,
+      objectives: ['Convert Ca gluconate mEq to mmol and compute Ca:Phos.', 'Avoid precipitation and the CaCl-drip pitfall.', 'Use albumin and ionized calcium correctly.'],
+      body: `
+<h3>Ranges ${S}</h3>
+<p>Phosphate 0.5–2 mmol/kg/day (adolescents 10–40 mmol/day). Magnesium 0.3–0.5 mEq/kg/day (adolescents 10–30 mEq/day). Calcium 0.5–4 mEq/kg/day (adolescents 10–20 mEq/day).</p>
+<h3>Ca:Phos balance</h3>
+<p>Try to match Ca and phos <b>1:1</b> if lytes allow, for bone mineralization ${S}. Units trap: <b>calcium gluconate is mEq (1 mmol = 2 mEq) while phosphate is mmol</b>. Convert first: Ca mmol = mEq ÷ 2. Ca and phos move inversely in serum.</p>
+<h3>Solubility rules</h3>
+<ul>
+ <li>Keep phosphate &lt;2 mmol/100 mL — it can precipitate with calcium ${S}.</li>
+ <li><b>DO NOT ADD PHOS IF ON A CaCl DRIP</b> ${S}.</li>
+ <li>L-cysteine (lower pH) helps solubility in infant PN.</li>
+</ul>
+<h3>Interpreting calcium</h3>
+<p>As albumin falls, free Ca rises ${S}. Albumin-corrected Ca ≈ measured + 0.8 × (4 − albumin). Ionized Ca is preferred in critically ill children.</p>
+<h3>Adjusting</h3>
+<p>Phos minor +0.25, major +0.5 mmol/kg/day. Mg minor +0.3, major +0.5 mEq/kg/day. Ca minor +1, major +2 mEq/kg/day ${S}.</p>`,
+      tasks: [
+        { type: 'numeric', prompt: 'Calcium gluconate 1.5 mEq/kg/day and phosphate 0.6 mmol/kg/day. What is the Ca:Phos molar ratio?', unit: ':1', answer: () => (1.5 / 2) / 0.6, tol: 0.04, explain: 'Ca 1.5 mEq ÷ 2 = 0.75 mmol; 0.75 ÷ 0.6 = 1.25 : 1.' },
+        { type: 'order', prompt: '4 kg infant at 16 mL/hr: add both calcium and phosphate so the <b>Ca:Phos ratio is 0.7–1.4 : 1</b> and phosphate stays <b>&lt;2 mmol/100 mL</b>.', patient: { wt: 4, age: 'infant' }, start: ord({ rate: 16, dex: 12, aa: 2.5, il: 1, cysteine: true }),
+          check: (c) => [{ ok: c.tot.ca > 0 && c.tot.phos > 0, msg: 'Both Ca and phosphate ordered' }, { ok: c.caPRatio != null && c.caPRatio >= 0.7 && c.caPRatio <= 1.4, msg: `Ca:Phos ${c.caPRatio == null ? '—' : T.r(c.caPRatio, 2)} : 1 (0.7–1.4)` }, { ok: c.phosPer100 < 2, msg: `Phos ${T.r(c.phosPer100, 2)} mmol/100 mL (<2)` }] }
+      ],
+      quiz: [
+        { q: 'Calcium gluconate 2 mEq equals how many mmol?', opts: ['0.5', '1', '2', '4'], ans: 1, why: 'Calcium is divalent: 1 mmol = 2 mEq.' },
+        { q: 'A patient is on a CaCl infusion. Adding phosphate to PN is:', opts: ['Fine', 'Contraindicated (precipitation risk)', 'Required', 'Only a problem >5 mmol'], ans: 1, why: 'Cheat sheet: do not add phos if on a CaCl drip.' },
+        { q: 'Albumin 2.0 g/dL and total Ca 7.0 mg/dL. Corrected Ca ≈', opts: ['7.0', '8.0', '8.6', '9.6'], ans: 2, why: '7.0 + 0.8 × (4 − 2) = 8.6; ionized Ca is preferred when available.' }
+      ]
+    },
+
+    {
+      id: 'm9', title: 'Day-by-day advancement', min: 25, caseId: 't1',
+      objectives: ['Advance PN one decision at a time against labs.', 'Spot when to hold, back off, or correct.', 'Fold in enteral feeds and begin the wean.'],
+      body: `
+<h3>The advancement loop</h3>
+<ol>
+ <li><b>Read yesterday's labs</b> — glucose, TG, BUN/Cr, lytes, Ca/Phos/Mg, albumin, UOP.</li>
+ <li><b>Gate each macro:</b> glucose → dextrose, TG → lipid, BUN/renal function → protein.</li>
+ <li><b>Correct electrolytes</b> using the minor/major steps ${S}.</li>
+ <li><b>Re-check totals:</b> kcal/kg, fluids/kg (include lipid), Ca:Phos, phos/100 mL.</li>
+ <li><b>Fold in feeds:</b> count enteral kcal; wean PN as feeds reach ~50% / ~75% ${C}.</li>
+</ol>
+<h3>Teaching defaults for step sizes ${D}</h3>
+<p>Dextrose +1–2 mg/kg/min/day to goal; AA +0.5 g/kg/day to goal; lipid +0.5–1 g/kg/day to ~3. Hold when the gating lab is abnormal; back off when it is clearly worse. Replace with your institution's protocol.</p>
+<h3>Your turn</h3>
+<p>Run <b>Baby A</b> through five PN days below. Each day you set the order, commit it, and see tomorrow's labs react to what you did.</p>`,
+      tasks: [],
+      quiz: [
+        { q: 'TG 240 on day 3. Lipid should:', opts: ['Be advanced', 'Hold at current dose', 'Be doubled', 'Be stopped permanently'], ans: 1, why: 'TG 200–300 → hold advancement [sheet].' },
+        { q: 'Trophic feeds (4 mL q3h) just started. PN should:', opts: ['Be weaned immediately', 'Continue — trophic feeds provide very few calories', 'Be stopped', 'Switch to peripheral'], ans: 1, why: 'Trophic feeds prime the gut; calories still come from PN until feeds reach a meaningful share.' },
+        { q: 'Which lab gates protein advancement?', opts: ['Glucose', 'Triglycerides', 'BUN / renal function', 'Albumin only'], ans: 2, why: 'BUN ≥30 → reduce protein [sheet]; renal and hepatic dysfunction call for caution.' }
+      ]
+    },
+
+    {
+      id: 'm10', title: 'Special considerations', min: 15,
+      objectives: ['Adapt PN for cardiac fluid restriction, chylothorax, AKI, cholestasis and refeeding.', 'Plan the transition off PN.'],
+      body: `
+<h3>Cardiac fluid restriction</h3>
+<p>Post-operative and low-output patients are often restricted. Build calories by concentrating dextrose and amino acids, keep lipid volume in the total, review every other fluid source (flushes, drips) ${D}.</p>
+<h3>Chylothorax</h3>
+<p>Enteral long-chain fat feeds chyle flow; fat-free / MCT-based feeds are usual. IV lipid bypasses the gut, so many programs continue it for energy and essential fatty acids — protocols differ ${C}. Protein losses can be significant; albumin is low (use ionized Ca).</p>
+<h3>Renal dysfunction</h3>
+<p>Be conservative with K, Phos and Mg; reduce protein when BUN ≥30 ${S}; reintroduce stepwise as UOP and labs recover.</p>
+<h3>Prolonged PN and cholestasis</h3>
+<p>Direct bilirubin rising: minimize PN duration, advance feeds, limit soybean-oil lipid dose, discuss alternative lipids with pharmacy/GI, treat line infection ${C}. Carnitine for TG ${S}.</p>
+<h3>Refeeding</h3>
+<p>After a prolonged low intake, glucose delivery triggers insulin and shifts phos, K and Mg into cells. Start lower on calories/dextrose, advance gradually and check phos/K/Mg frequently, replacing as needed ${C}.</p>
+<h3>Respiratory failure</h3>
+<p>Avoid overfeeding and very high dextrose loads — CO₂ production ${S}.</p>
+<h3>Coming off PN</h3>
+<p>Count enteral kcal; wean as feeds reach ~50% and stop around 75% of goal ${C}. Taper dextrose in step with falling rate to avoid rebound hypoglycemia ${D}.</p>`,
+      tasks: [],
+      quiz: [
+        { q: 'A fluid-restricted infant is under-fed. The first strategy is to:', opts: ['Increase the PN rate', 'Concentrate the PN within GIR/access limits', 'Add IV fluids', 'Stop feeds'], ans: 1, why: 'Concentrate; volume is the constraint.' },
+        { q: 'Phos 1.8 mg/dL on day 2 of re-starting nutrition in a malnourished child suggests:', opts: ['Contaminated sample', 'Refeeding-type intracellular shift', 'Over-hydration only', 'Normal'], ans: 1, why: 'Insulin-driven cellular uptake of phos/K/Mg — replete and slow the advancement.' },
+        { q: 'Which is NOT a standard response to rising direct bilirubin on prolonged PN?', opts: ['Advance enteral feeds', 'Limit soybean-oil lipid dose', 'Raise lipid to boost calories', 'Evaluate for line infection'], ans: 2, why: 'Increasing soybean-oil lipid worsens cholestasis risk.' }
+      ]
+    }
+  ];
+
+  root.TPNC = Object.assign(root.TPNC || {}, { MODULES });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Check-off content: blinded calculations, knowledge check, and order-building cases with weighted rubrics.
+   PASS CRITERIA ARE PROVISIONAL — local educators must set and validate them (see docs/CLINICAL_REVIEW_NOTES.md). */
+(function (root) {
+  'use strict';
+  const T = root.TPN;
+  const ord = (o) => Object.assign(T.emptyOrder(), o || {});
+  const between = (v, a, b) => v >= a && v <= b;
+
+  // ---------- A. Calculations (numeric, tolerance-based) ----------
+  const CALC = [
+    { id: 'c1', prompt: 'TPN D12.5 at 18 mL/hr in a 6.4 kg infant. What is the GIR?', unit: 'mg/kg/min', ans: () => 12.5 * 18 / 6.4 / 6, tol: 0.03 },
+    { id: 'c2', prompt: 'A 9.2 kg child: TPN 24 mL/hr, D15, AA 2.5 g/kg/day, lipid 2 g/kg/day. What are the TPN kcal/kg/day?', unit: 'kcal/kg/day',
+      ans: () => T.calc({ wt: 9.2, age: 'child' }, ord({ rate: 24, dex: 15, aa: 2.5, il: 2 })).tpnKcalKg, tol: 0.03 },
+    { id: 'c3', prompt: 'The bag label reads K 30 mEq/L. Rate 20 mL/hr, weight 7.0 kg. What is the potassium dose?', unit: 'mEq/kg/day', ans: () => 30 * (20 * 24 / 1000) / 7, tol: 0.03 },
+    { id: 'c4', prompt: 'You want sodium 4 mEq/kg/day in a 5 kg infant on 12 mL/hr. What concentration should the bag contain?', unit: 'mEq/L', ans: () => 4 * 5 / (12 * 24 / 1000), tol: 0.03 },
+    { id: 'c5', prompt: '4.5 kg infant: TPN 14 mL/hr, IVF 2 mL/hr, feeds 8 × 20 mL, lipid 2 g/kg/day (20%). What are the total fluids, including the lipid volume?', unit: 'mL/kg/day',
+      ans: () => T.calc({ wt: 4.5, age: 'infant' }, ord({ rate: 14, ivf: 2, il: 2, feeds: { n: 8, vol: 20, kcalOz: 20 } })).totalFluids, tol: 0.03 },
+    { id: 'c6', prompt: 'Orders: KCl 0.8 mEq/kg/day, K-phos 0.6 mmol/kg/day, no K-acetate. What is the total potassium?', unit: 'mEq/kg/day', ans: () => 0.8 + 0.6 * 1.5, tol: 0.03 },
+    { id: 'c7', prompt: 'Calcium gluconate 2 mEq/kg/day and phosphate 0.8 mmol/kg/day. What is the Ca:Phos molar ratio (as X : 1)?', unit: ': 1', ans: () => (2 / 2) / 0.8, tol: 0.04 },
+    { id: 'c8', prompt: '4.2 kg infant on lipid 1.5 g/kg/day of 20% emulsion. How many mL of lipid per day?', unit: 'mL/day', ans: () => 1.5 * 4.2 * T.IL_ML_PER_G, tol: 0.03 }
+  ];
+
+  // ---------- B. Knowledge check (MCQ) ----------
+  const MCQ = [
+    { id: 'q1', topic: 'Dextrose', q: 'GIR is 10 mg/kg/min and glucose is 240 mg/dL. Best next step?', opts: ['Advance dextrose by 2 mg/kg/min', 'Hold/reduce GIR and look for contributors', 'Increase lipid', 'Add potassium'], ans: 1, why: 'Hyperglycemia gates dextrose: do not advance; reduce and assess steroids, sepsis, stress (insulin per protocol).' },
+    { id: 'q2', topic: 'Lipid', q: 'TG 285 mg/dL on lipid 2 g/kg/day. According to the cheat sheet:', opts: ['Hold advancement', 'Hold lipid completely', 'Double the dose', 'No action'], ans: 0, why: 'TG 200–300 → hold advancement. TG >300 → hold lipid.' },
+    { id: 'q3', topic: 'Lipid', q: 'Which statement about L-carnitine in the cheat sheet is correct?', opts: ['It raises TG', '10 mg/kg/day for infants, up to 20 mg/kg/day, helps lower TG', '100 mg/kg/day for all ages', 'It replaces L-cysteine'], ans: 1, why: 'L-carnitine 10 mg/kg/day for infants (up to 20) to help lower TG.' },
+    { id: 'q4', topic: 'Protein', q: 'BUN 32 on 2 g/kg/day protein. Which is correct?', opts: ['Advance AA 0.5', 'Decrease protein by 0.5–1 g/kg/day and monitor', 'Stop dextrose', 'Switch to lipid only'], ans: 1, why: 'BUN ≥30 → decrease protein by 0.5–1 g/kg/day.' },
+    { id: 'q5', topic: 'Protein', q: 'Which additive is required for infants under 1 year per the sheet?', opts: ['L-carnitine', 'L-cysteine', 'Insulin', 'Heparin'], ans: 1, why: 'If <1 year: must add L-cysteine.' },
+    { id: 'q6', topic: 'Calcium/Phos', q: 'What is the Ca:Phos target?', opts: ['Ca 2 : phos 1 in mEq', 'Match ~1:1 (convert Ca mEq → mmol first)', 'Phos 5 × Ca', 'No relationship'], ans: 1, why: 'Try to match 1:1 for bone mineralization, converting Ca gluconate mEq to mmol (÷2) before comparing with phos mmol.' },
+    { id: 'q7', topic: 'Calcium/Phos', q: 'Patient has a CaCl infusion running. PN phosphate should be:', opts: ['Increased', 'Unchanged', 'Not added', 'Replaced by acetate'], ans: 2, why: 'DO NOT ADD PHOS IF ON CaCl gtt — precipitation risk.' },
+    { id: 'q8', topic: 'Calcium/Phos', q: 'Phosphate in the bag must stay below:', opts: ['0.5 mmol/100 mL', '2 mmol/100 mL', '10 mmol/100 mL', '50 mmol/100 mL'], ans: 1, why: 'Keep phos <2 mmol/100 mL; it can precipitate with calcium.' },
+    { id: 'q9', topic: 'Electrolytes', q: 'K-phos 0.5 mmol/kg/day contributes how much potassium?', opts: ['0.5 mEq', '0.75 mEq', '1.5 mEq', '2 mEq'], ans: 1, why: '1 mmol K-phos = 1.5 mEq K → 0.75 mEq/kg/day.' },
+    { id: 'q10', topic: 'Electrolytes', q: 'Na 130 (major hyponatremia correction step) per the sheet:', opts: ['+0.25 mEq/kg/day', '½NS → NS or +3–4 mEq/kg/day', '+0.5 mmol/kg/day', 'Hold sodium'], ans: 1, why: 'Sodium major adjustment: ½NS → NS, or +3–4 mEq/kg/day; bolus NS 20 mL/kg if indicated.' },
+    { id: 'q11', topic: 'Electrolytes', q: 'Oliguric AKI with K 5.4. PN potassium should be:', opts: ['Increased 1 mEq/kg/day', 'Continued unchanged', 'Removed/minimized', 'Switched to acetate'], ans: 2, why: 'Renal dysfunction → be conservative with K, Phos, Mg.' },
+    { id: 'q12', topic: 'Acid–base', q: 'Hyperchloremic metabolic acidosis (Cl 112, CO₂ 16) on PN. The best electrolyte shift is:', opts: ['More chloride', 'More acetate, less chloride', 'Stop sodium', 'Add phosphate'], ans: 1, why: 'Acetate is metabolized to bicarbonate; reduce chloride load.' },
+    { id: 'q13', topic: 'Calcium', q: 'Albumin 2.0, total Ca 7.0. The most useful action is to:', opts: ['Bolus calcium', 'Check ionized calcium / correct for albumin', 'Stop calcium', 'Increase phosphate'], ans: 1, why: 'Low albumin lowers total Ca without lowering free Ca; check ionized Ca.' },
+    { id: 'q14', topic: 'Fluids', q: 'Fluid-restricted infant, TG 150, glucose 130, GIR 7. To add calories you should:', opts: ['Raise the PN rate 30%', 'Concentrate dextrose within the GIR goal', 'Stop protein', 'Add free-water boluses'], ans: 1, why: 'Concentrate rather than add volume; stay within GIR and access limits.' },
+    { id: 'q15', topic: 'Safety', q: 'Peripheral IV with D15 PN is ordered. The issue is:', opts: ['Too low calories', 'Exceeds usual peripheral dextrose/osmolarity limits', 'Too much lipid', 'Too little sodium'], ans: 1, why: 'Peripheral PN is generally limited to ~12.5% dextrose and ~900 mOsm/L (verify policy).' },
+    { id: 'q16', topic: 'Transition', q: 'Enteral feeds provide 80% of goal calories. PN should:', opts: ['Be advanced', 'Be stopped/weaned off', 'Be converted to peripheral', 'Increase lipid'], ans: 1, why: 'At ~75% enteral (protocol dependent) PN is typically stopped.' }
+  ];
+
+  // ---------- C. Order-building cases ----------
+  const CASES = [
+    {
+      id: 'k1', title: 'Case 1 — Build the first PN order', patient: { wt: 5.2, age: 'infant' }, fluidGoal: 80, access: 'central', calciumInfusion: false,
+      story: '5-month-old, 5.2 kg, POD 0 after AVSD repair. NPO, central line, urine output adequate. The ICU team restricts total fluids to <b>80 mL/kg/day</b>. No calcium infusion. Build the PN order for <b>PN day 1</b>.',
+      labs: { na: 138, k: 4.3, cl: 104, co2: 22, bun: 11, cr: 0.4, glu: 110, ca: 9.0, ica: 1.2, phos: 5.4, mg: 2.0, alb: 3.2, tg: 55, dbili: 0.3, alt: 28, uop: 1.5 },
+      start: ord({ access: 'central' }), prev: null,
+      items: [
+        { id: 'gir', label: 'Day-1 GIR 4–8 mg/kg/min', pts: 3, test: (c) => between(c.gir, 4, 8) ? 1 : (between(c.gir, 3, 4) || between(c.gir, 8, 10)) ? 0.5 : 0, why: 'Start conservatively; advance daily toward the 12–14 infant goal.' },
+        { id: 'aa', label: 'Amino acids 1.5–3 g/kg/day', pts: 2, test: (c) => between(c.aa, 1.5, 3) ? 1 : 0, why: 'Start protein early; avoid delaying amino acids.' },
+        { id: 'il', label: 'Lipid 0.5–1.5 g/kg/day', pts: 2, test: (c) => between(c.il, 0.5, 1.5) ? 1 : between(c.il, 1.5, 2) ? 0.5 : 0, why: 'Start ~1 g/kg/day and advance with TG.' },
+        { id: 'cys', label: 'L-cysteine added (infant <1 yr)', pts: 2, test: (c, o) => o.cysteine ? 1 : 0, why: 'Cheat sheet: if <1 year, must add L-cysteine.' },
+        { id: 'fluid', label: 'Total fluids ≤80 mL/kg/day (including lipid)', pts: 3, test: (c) => c.totalFluids <= 80 ? 1 : c.totalFluids <= 88 ? 0.5 : 0, why: 'Concentrate, don\'t add volume. Lipid volume counts.' },
+        { id: 'kcal', label: 'Total 40–85 kcal/kg/day (partial day-1 provision)', pts: 2, test: (c) => between(c.totalKcalKg, 40, 85) ? 1 : (between(c.totalKcalKg, 30, 40) || between(c.totalKcalKg, 85, 95)) ? 0.5 : 0, why: 'Day 1 is a partial provision building toward goal (85–105).' },
+        { id: 'na', label: 'Sodium 2–5 mEq/kg/day', pts: 2, test: (c) => between(c.tot.na, 2, 5) ? 1 : between(c.tot.na, 1, 2) ? 0.5 : 0, why: 'Cheat sheet range for infants.' },
+        { id: 'k', label: 'Potassium ≤4 mEq/kg/day', pts: 1, test: (c) => c.tot.k <= 4 ? 1 : 0, why: 'Cheat sheet max 2–4 mEq/kg/day (UOP adequate, K 4.3).' },
+        { id: 'ca', label: 'Calcium 0.5–2.5 mEq/kg/day', pts: 1, test: (c) => between(c.tot.ca, 0.5, 2.5) ? 1 : 0, why: 'Neonates/infants need Ca early; sheet range 0.5–4.' },
+        { id: 'phos', label: 'Phosphate absent, or in range with Ca:Phos 0.6–1.6', pts: 2, test: (c) => c.tot.phos === 0 ? 0.5 : (between(c.tot.phos, 0.5, 2) && c.tot.ca > 0 && between(c.caPRatio || 0, 0.6, 1.6)) ? 1 : 0, why: 'Phos 0.5–2 mmol/kg/day with Ca:Phos balance; day-1 omission is only partial credit.' },
+        { id: 'mg', label: 'Magnesium 0.3–0.5 mEq/kg/day', pts: 1, test: (c) => between(c.tot.mg, 0.3, 0.5) ? 1 : c.tot.mg === 0 ? 0.5 : 0, why: 'Cheat sheet range.' }
+      ],
+      crits: [
+        { id: 'gir12', label: 'GIR >12 mg/kg/min on PN day 1', test: (c) => c.gir > 12 },
+        { id: 'il3', label: 'Lipid >3 g/kg/day', test: (c) => c.il > 3 },
+        { id: 'phos100', label: 'Phosphate ≥2 mmol/100 mL (precipitation)', test: (c) => c.phosPer100 >= 2 },
+        { id: 'fluid120', label: 'Total fluids >20% over the restriction', test: (c) => c.totalFluids > 80 * 1.2 },
+        { id: 'k4', label: 'Potassium above sheet maximum (4 mEq/kg/day)', test: (c) => c.tot.k > 4 }
+      ],
+      multis: [{
+        id: 'monitor', prompt: 'Select <b>all</b> monitoring that belongs in the first-week PN plan:', pts: 4,
+        options: [
+          { t: 'BMP (Na, K, Cl, CO₂, BUN, Cr)', ok: true }, { t: 'Glucose', ok: true }, { t: 'Calcium / phosphorus / magnesium', ok: true },
+          { t: 'Triglycerides', ok: true }, { t: 'Liver panel / direct bilirubin (periodic)', ok: true }, { t: 'Daily weight', ok: true },
+          { t: 'Ammonia daily', ok: false }, { t: 'Blood culture daily', ok: false }
+        ]
+      }]
+    },
+
+    {
+      id: 'k2', title: 'Case 2 — Advance PN day 3 from labs', patient: { wt: 14, age: 'child' }, fluidGoal: 90, access: 'central', calciumInfusion: false,
+      story: '3-year-old, 14 kg, PN day 3. Yesterday\'s order is loaded. Feeds started today (8 × 40 mL of 20 kcal/oz). Fluid goal <b>90 mL/kg/day</b> (including lipid). Review the labs and write today\'s order.',
+      labs: { na: 136, k: 3.1, cl: 100, co2: 24, bun: 18, cr: 0.4, glu: 168, ca: 8.9, ica: 1.15, phos: 2.7, mg: 1.5, alb: 3.2, tg: 240, dbili: 0.4, alt: 32, uop: 2.0 },
+      prev: ord({ rate: 34, dex: 12.5, aa: 1.5, il: 1.5, cysteine: false, lytes: { naCl: 3, kCl: 1, naPhos: 0.25, ca: 1, mg: 0.3 }, feeds: { n: 0, vol: 0, kcalOz: 0 } }),
+      start: ord({ rate: 34, dex: 12.5, aa: 1.5, il: 1.5, cysteine: false, lytes: { naCl: 3, kCl: 1, naPhos: 0.25, ca: 1, mg: 0.3 }, feeds: { n: 8, vol: 40, kcalOz: 20 } }),
+      items: [
+        { id: 'gir', label: 'GIR advanced ~1–2 mg/kg/min (glucose 168 acceptable)', pts: 3, test: (c, o, p) => { const d = c.gir - p.gir; return between(d, 0.7, 2.3) ? 1 : (between(d, 0.2, 0.7) || between(d, 2.3, 3)) ? 0.5 : 0; }, why: 'Glucose <180 → advance dextrose ~1–2 mg/kg/min.' },
+        { id: 'il', label: 'Lipid NOT advanced (TG 240)', pts: 3, test: (c, o, p) => c.il <= p.il + 1e-9 ? 1 : 0, why: 'TG 200–300 → hold advancement.' },
+        { id: 'aa', label: 'Amino acids held or advanced to ≤2 g/kg/day', pts: 2, test: (c, o, p) => between(c.aa, p.aa, 2) ? 1 : 0, why: 'BUN 18 → protein can advance toward the child goal.' },
+        { id: 'k', label: 'Potassium increased ~1 mEq/kg/day (K 3.1)', pts: 3, test: (c, o, p) => { const d = c.tot.k - p.tot.k; return between(d, 0.7, 2) ? 1 : between(d, 0.3, 0.7) ? 0.5 : 0; }, why: 'K <3.5 → minor increase of +1 mEq/kg/day (sheet).' },
+        { id: 'phos', label: 'Phosphate increased 0.2–0.6 mmol/kg/day (phos 2.7)', pts: 3, test: (c, o, p) => { const d = c.tot.phos - p.tot.phos; return between(d, 0.2, 0.6) ? 1 : (between(d, 0.1, 0.2) || between(d, 0.6, 0.9)) ? 0.5 : 0; }, why: 'Low phos → minor +0.25 or major +0.5 mmol/kg/day.' },
+        { id: 'mg', label: 'Magnesium increased 0.2–0.5 mEq/kg/day (Mg 1.5)', pts: 2, test: (c, o, p) => between(c.tot.mg - p.tot.mg, 0.2, 0.5) ? 1 : 0, why: 'Low Mg → +0.3 (minor) or +0.5 (major).' },
+        { id: 'cap', label: 'Ca:Phos kept 0.6–1.6 after raising phos', pts: 2, test: (c) => c.tot.phos > 0 && between(c.caPRatio || 0, 0.6, 1.6) ? 1 : 0, why: 'Raising phos without Ca skews the ratio and risks precipitation.' },
+        { id: 'na', label: 'Sodium unchanged (±1 mEq/kg/day)', pts: 1, test: (c, o, p) => Math.abs(c.tot.na - p.tot.na) <= 1 ? 1 : 0, why: 'Na 136 is acceptable — no sodium change needed.' },
+        { id: 'kcal', label: 'Total 60–90 kcal/kg/day (PN + feeds)', pts: 2, test: (c) => between(c.totalKcalKg, 60, 90) ? 1 : 0, why: 'Count enteral calories; avoid under- or overfeeding.' },
+        { id: 'fluid', label: 'Total fluids ≤90 mL/kg/day (feeds + lipid included)', pts: 2, test: (c) => c.totalFluids <= 90 ? 1 : c.totalFluids <= 99 ? 0.5 : 0, why: 'Feeds started — PN volume must not stack on top.' }
+      ],
+      crits: [
+        { id: 'ilAdv', label: 'Lipid advanced with TG 240', test: (c, o, p) => c.il > p.il + 1e-9 },
+        { id: 'phos100', label: 'Phosphate ≥2 mmol/100 mL (precipitation)', test: (c) => c.phosPer100 >= 2 },
+        { id: 'k4', label: 'Potassium above sheet maximum (4 mEq/kg/day)', test: (c) => c.tot.k > 4 },
+        { id: 'girJump', label: 'GIR raised >3 mg/kg/min in one day', test: (c, o, p) => c.gir - p.gir > 3 }
+      ],
+      multis: []
+    },
+
+    {
+      id: 'k3', title: 'Case 3 — Rising TG, high glucose, early cholestasis', patient: { wt: 4.4, age: 'infant' }, fluidGoal: 130, access: 'central', calciumInfusion: false,
+      story: '6-month-old, 4.4 kg, <b>PN day 18</b>. TG 410, glucose 236, direct bilirubin 3.1, ALT 96. Yesterday\'s PN is loaded: dextrose 22%, lipid 3 g/kg/day, AA 3 g/kg/day. Minimal trophic feeds. Fluid goal 130 mL/kg/day. Revise the PN order.',
+      labs: { na: 137, k: 4.6, cl: 102, co2: 24, bun: 9, cr: 0.3, glu: 236, ca: 9.2, ica: 1.2, phos: 5.4, mg: 2.1, alb: 2.9, tg: 410, dbili: 3.1, alt: 96, uop: 2.6 },
+      prev: ord({ rate: 18, dex: 22, aa: 3, il: 3, cysteine: true, carnitine: 0, lytes: { naCl: 3, kAc: 2, ca: 2, naPhos: 0.5, kPhos: 0.5, mg: 0.4 }, feeds: { n: 8, vol: 8, kcalOz: 20 } }),
+      start: ord({ rate: 18, dex: 22, aa: 3, il: 3, cysteine: true, carnitine: 0, lytes: { naCl: 3, kAc: 2, ca: 2, naPhos: 0.5, kPhos: 0.5, mg: 0.4 }, feeds: { n: 8, vol: 8, kcalOz: 20 } }),
+      items: [
+        { id: 'il', label: 'Lipid held (0) — or minimized to ≤1 g/kg/day', pts: 4, test: (c) => c.il === 0 ? 1 : c.il <= 1 ? 0.75 : 0, why: 'TG >300 → hold lipid (sheet). Many protocols minimize to 0.5–1 g/kg/day to avoid EFAD — partial credit.' },
+        { id: 'gir', label: 'GIR reduced by ≥1.5 and ≥8 (glucose 236, prior GIR above goal)', pts: 4, test: (c, o, p) => (c.gir <= p.gir - 1.5 && c.gir >= 8) ? 1 : (c.gir < p.gir && c.gir >= 6) ? 0.5 : 0, why: 'Hyperglycemia + overfeeding → lower GIR toward the 12–14 infant goal and below.' },
+        { id: 'carn', label: 'L-carnitine 10–20 mg/kg/day', pts: 3, test: (c, o) => between(T.num(o.carnitine), 10, 20) ? 1 : 0, why: 'Cheat sheet: L-carnitine helps lower TG, 10 mg/kg/day up to 20 in infants.' },
+        { id: 'aa', label: 'Amino acids preserved 2–3.5 g/kg/day', pts: 2, test: (c) => between(c.aa, 2, 3.5) ? 1 : 0, why: 'Protect protein while removing lipid calories.' },
+        { id: 'kcal', label: 'Total 60–105 kcal/kg/day (no starving, no overfeeding)', pts: 2, test: (c) => between(c.totalKcalKg, 60, 105) ? 1 : 0, why: 'Overfeeding with dextrose worsens hyperglycemia and steatosis.' },
+        { id: 'cys', label: 'L-cysteine retained (infant)', pts: 1, test: (c, o) => o.cysteine ? 1 : 0, why: 'Infant <1 yr must have cysteine.' },
+        { id: 'fluid', label: 'Total fluids ≤130 mL/kg/day', pts: 2, test: (c) => c.totalFluids <= 130 ? 1 : 0, why: 'Stay within the goal.' }
+      ],
+      crits: [
+        { id: 'ilKeep', label: 'Lipid >1 g/kg/day with TG 410', test: (c) => c.il > 1 },
+        { id: 'girUp', label: 'GIR not reduced despite glucose 236', test: (c, o, p) => c.gir >= p.gir },
+        { id: 'carn20', label: 'L-carnitine above 20 mg/kg/day', test: (c, o) => T.num(o.carnitine) > 20 }
+      ],
+      multis: [{
+        id: 'ifald', prompt: 'Direct bilirubin is 3.1. Select <b>all</b> reasonable strategies:', pts: 4,
+        options: [
+          { t: 'Minimize soybean-oil lipid dose / discuss alternative (e.g., fish-oil-containing) emulsion with pharmacy & GI', ok: true },
+          { t: 'Advance enteral feeds as tolerated', ok: true },
+          { t: 'Evaluate for and prevent line infection / sepsis', ok: true },
+          { t: 'Shorten or cycle PN when feasible', ok: true },
+          { t: 'Increase lipid to give more calories', ok: false },
+          { t: 'Stop amino acids', ok: false }
+        ]
+      }]
+    }
+  ];
+
+  const PASS = { calc: 7 / 8, mcq: 0.8, cases: 0.8, noCritical: true };
+
+  /** Score one order against a case rubric. Returns per-item results + critical errors. */
+  function scoreCase(cs, order) {
+    const c = T.calc(cs.patient, order), p = cs.prev ? T.calc(cs.patient, cs.prev) : null;
+    let earned = 0, max = 0;
+    const items = cs.items.map(it => {
+      const f = it.test(c, order, p), got = f * it.pts; earned += got; max += it.pts;
+      return { id: it.id, label: it.label, pts: it.pts, got, f, why: it.why };
+    });
+    const crits = cs.crits.filter(x => x.test(c, order, p)).map(x => ({ id: x.id, label: x.label }));
+    return { earned, max, items, crits, calc: c };
+  }
+  /** Multi-select scoring: (correct picks − wrong picks) / #correct, floored at 0. */
+  function scoreMulti(m, picked) {
+    const nOk = m.options.filter(o => o.ok).length;
+    let hits = 0, wrong = 0; m.options.forEach((o, i) => { if (picked.includes(i)) { if (o.ok) hits++; else wrong++; } });
+    const frac = Math.max(0, (hits - wrong) / nOk);
+    return { got: frac * m.pts, max: m.pts, hits, wrong, nOk };
+  }
+  /** Overall result from the three sections. */
+  function summarize(parts) {
+    const calcFrac = parts.calcMax ? parts.calcGot / parts.calcMax : 0;
+    const mcqFrac = parts.mcqMax ? parts.mcqGot / parts.mcqMax : 0;
+    const caseFrac = parts.caseMax ? parts.caseGot / parts.caseMax : 0;
+    const crit = parts.crits.length;
+    const pass = calcFrac >= PASS.calc - 1e-9 && mcqFrac >= PASS.mcq - 1e-9 && caseFrac >= PASS.cases - 1e-9 && crit === 0;
+    return { calcFrac, mcqFrac, caseFrac, crit, pass };
+  }
+
+  root.TPNC = Object.assign(root.TPNC || {}, { CHECK: { CALC, MCQ, CASES, PASS, scoreCase, scoreMulti, summarize } });
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Shared UI: Workspace (order entry + live results), LabsPanel, CaseRunner. */
+(function (root) {
+  'use strict';
+  const T = root.TPN, C = root.TPNC;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const f = (x, d = 1) => (typeof x === 'number' && isFinite(x)) ? T.r(x, d).toFixed(d) : '—';
+  const num = T.num;
+  const $ = (sel, el) => (el || document).querySelector(sel);
+  const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+  const STAT = { ok: ['ok', 'in range'], low: ['low', 'below'], high: ['high', 'above'] };
+  const RANGE_TXT = (k, age) => { const r = T.rangeFor(k, age); return r ? `${r[0]}–${r[1]} ${k === 'phos' ? 'mmol' : 'mEq'}/${r[2] === 'day' ? 'day' : 'kg/d'}` : '—'; };
+
+  /* ---------------- Workspace ---------------- */
+  function Workspace(rootEl, cfg) {
+    cfg = Object.assign({ blind: false, math: false, flags: true, targets: true, lockPatient: false, lockAccess: false, showRef: true }, cfg || {});
+    const S = { pt: { wt: '', age: 'infant' }, o: T.emptyOrder(), ctx: {}, extra: {}, unit: 'kg', raw: {} };
+    let readOnly = false;
+
+    const wtN = () => num(S.pt.wt), litersDay = () => num(S.o.rate) * 24 / 1000;
+    function rawFromCanon() { T.LYTE_DEFS.forEach(d => { const kg = num(S.o.lytes[d.id]); S.raw[d.id] = S.unit === 'kg' ? kg : (litersDay() > 0 && wtN() > 0 ? kg * wtN() / litersDay() : 0); }); }
+    function canonFromRaw() { T.LYTE_DEFS.forEach(d => { const v = num(S.raw[d.id]); S.o.lytes[d.id] = S.unit === 'kg' ? v : (wtN() > 0 && litersDay() > 0 ? v * litersDay() / wtN() : 0); }); }
+    const val = (x) => (x === 0 || x === '' || x == null) ? '' : (typeof x === 'number' ? T.r(x, 3) : x);
+
+    function inputField(k, label, unit, o) {
+      o = o || {}; const v = k.startsWith('raw.') ? S.raw[k.slice(4)] : k.split('.').reduce((a, p) => a && a[p], S);
+      return `<div><label for="f-${k}">${label} ${unit ? `<span class="unit">${unit}</span>` : ''}</label><input id="f-${k}" data-k="${k}" type="number" inputmode="decimal" step="${o.step || 'any'}" min="0" value="${esc(val(v))}" ${o.ph ? `placeholder="${o.ph}"` : ''}></div>`;
+    }
+    function renderIn() {
+      const u = S.unit === 'kg';
+      const ly = (ids) => ids.map(d => `<div class="nm">${d.name}<span class="unit"> ${d.unit}</span></div><input data-k="raw.${d.id}" aria-label="${d.name}" type="number" inputmode="decimal" step="any" min="0" value="${esc(val(S.raw[d.id]))}"><div class="bag" data-bag="${d.id}"></div>`).join('');
+      rootEl.querySelector('.ws-in').innerHTML = `
+      <div class="grp"><div class="grp-t">Patient</div><div class="row two">
+        ${inputField('pt.wt', 'Dosing weight', 'kg', { ph: 'e.g. 5.2' })}
+        <div><label for="f-pt.age">Age group</label><select id="f-pt.age" data-k="pt.age">${Object.keys(T.AGES).map(a => `<option value="${a}" ${S.pt.age === a ? 'selected' : ''}>${T.AGES[a].label}</option>`).join('')}</select></div></div></div>
+      <div class="grp"><div class="grp-t">TPN</div><div class="row">
+        ${inputField('o.rate', 'TPN rate', 'mL/hr')}${inputField('o.dex', 'Dextrose', '%')}${inputField('o.aa', 'Amino acids', 'g/kg/day')}${inputField('o.il', 'Lipid (20%)', 'g/kg/day')}</div>
+        <label class="chk"><input type="checkbox" data-k="o.cysteine" ${S.o.cysteine ? 'checked' : ''}> L-cysteine added</label>
+        <div class="row two" style="margin-top:6px">${inputField('o.carnitine', 'L-carnitine', 'mg/kg/day')}
+          <div><label for="f-o.access">Access</label><select id="f-o.access" data-k="o.access"><option value="central" ${S.o.access === 'central' ? 'selected' : ''}>Central</option><option value="peripheral" ${S.o.access === 'peripheral' ? 'selected' : ''}>Peripheral</option></select></div></div>
+        <label class="chk"><input type="checkbox" data-k="o.calciumInfusion" ${S.o.calciumInfusion ? 'checked' : ''}> Calcium chloride infusion running</label></div>
+      <div class="grp"><div class="grp-t">Other fluids &amp; feeds</div><div class="row">${inputField('o.ivf', 'IVF rate', 'mL/hr')}${inputField('o.feeds.n', 'Feeds / 24 h', '#')}${inputField('o.feeds.vol', 'Volume / feed', 'mL')}${inputField('o.feeds.kcalOz', 'Density', 'kcal/30 mL')}</div></div>
+      <div class="grp"><div class="grp-t">Electrolytes <span class="seg" role="group" aria-label="Electrolyte entry units"><button type="button" data-unit="kg" aria-pressed="${u}">per kg/day</button><button type="button" data-unit="L" aria-pressed="${!u}">bag mEq/L</button></span></div>
+        <div class="lytes">${ly(T.LYTE_DEFS)}</div>
+        <div class="small muted" style="margin-top:6px">${u ? 'Dose entered per kg/day; the right column shows the bag concentration.' : 'Entering the bag label (per L); the right column shows the resulting dose per kg/day.'} Phosphate is mmol; the rest mEq.</div></div>`;
+      applyLock();
+    }
+    function applyLock() {
+      $$('input,select,button[data-unit]', rootEl.querySelector('.ws-in')).forEach(el => {
+        const k = el.dataset.k; let dis = readOnly;
+        if (cfg.lockPatient && (k === 'pt.wt' || k === 'pt.age')) dis = true;
+        if (cfg.lockAccess && k === 'o.access') dis = true;
+        el.disabled = dis;
+      });
+    }
+
+    function renderOut() {
+      const pt = { wt: wtN(), age: S.pt.age }, o = S.o, blind = cfg.blind;
+      const ev = T.evaluate(pt, o, S.ctx, S.extra), c = ev.calc, age = c.age, A = T.AGES[age];
+      // bag labels beside lyte inputs
+      T.LYTE_DEFS.forEach(d => { const e = rootEl.querySelector(`[data-bag="${d.id}"]`); if (!e) return; e.textContent = S.unit === 'kg' ? (c.perLiter[d.id] > 0 ? f(c.perLiter[d.id], 0) + '/L' : '') : (c.lytes[d.id] > 0 ? f(c.lytes[d.id], 2) + '/kg' : ''); });
+      const showT = cfg.targets && !blind;
+      const gs = T.girStatus(c), ks = T.kcalStatus(c);
+      const tile = (k, v, s, cls) => `<div class="tile ${showT && cls ? cls : ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+      const girBadge = showT && gs !== 'none' ? `<span class="badge b-${gs}">${STAT[gs][1]}</span>` : '';
+      const fluidOver = S.extra.fluidGoal && c.totalFluids > S.extra.fluidGoal * 1.001;
+      const crits = ev.flags.filter(x => x.sev === 'crit').length;
+      const tot = c.tpnKcalKg + c.feedKcalKg || 1;
+      const seg = (cls, v) => `<span class="${cls}" style="width:${(v / tot * 100).toFixed(1)}%" title="${f(v, 1)} kcal/kg"></span>`;
+      const row = (a, b, cc) => `<tr><td>${a}</td><td class="n">${b}</td><td class="n">${cc}</td></tr>`;
+      const lyRow = (nm, key, unitTxt, perLk) => {
+        const per = (T.rangeFor(key, age) && T.rangeFor(key, age)[2] === 'day') ? c.perDay[key] : c.tot[key], st = T.rangeStatus(key, age, c);
+        const rgTxt = (!blind || cfg.showRef) && T.rangeFor(key, age) ? RANGE_TXT(key, age) : '';
+        const b = st && st !== 'none' && showT ? `<span class="badge b-${st === 'ok' ? 'ok' : st === 'low' ? 'low' : 'high'}">${st === 'ok' ? '✓' : st === 'low' ? '▼' : '▲'}</span>` : '';
+        return `<tr><td>${nm}</td><td class="n">${f(per, 2)} <span class="unit">${unitTxt}${T.rangeFor(key, age) && T.rangeFor(key, age)[2] === 'day' ? '/day' : '/kg/d'}</span> ${b}</td><td class="n">${perLk > 0 ? f(perLk, 0) : '—'}</td><td class="small muted">${rgTxt}</td></tr>`;
+      };
+      const flagsHtml = (cfg.flags && !blind) ? (() => {
+        const order = { crit: 0, warn: 1, info: 2 };
+        const fl = ev.flags.slice().sort((a, b) => order[a.sev] - order[b.sev]);
+        return fl.length ? fl.map(x => `<div class="flag ${x.sev}"><b>${x.sev === 'crit' ? '⛔ ' : x.sev === 'warn' ? '⚠ ' : 'ℹ '}${esc(x.text)}</b><div class="why">${esc(x.why)}</div></div>`).join('') : '<div class="callout good">No safety flags for the current order.</div>';
+      })() : '';
+      const mathHtml = cfg.math ? `<details class="math" open><summary>Show the math (with your numbers)</summary>${T.steps(pt, o).map(s => `<div class="step"><div class="t">${esc(s.t)}</div><div class="f">${esc(s.f)}</div><div class="n">${esc(s.n)}${s.n2 ? '<br>' + esc(s.n2) : ''}</div>${s.why ? `<div class="why">${esc(s.why)}</div>` : ''}</div>`).join('')}</details>` : '';
+      rootEl.querySelector('.ws-out').innerHTML = `
+      <div class="sticky-sum"><span>GIR ${f(c.gir)}</span><span>${f(c.totalKcalKg, 0)} kcal/kg</span><span>${f(c.totalFluids, 0)} mL/kg${S.extra.fluidGoal ? ' / ' + S.extra.fluidGoal : ''}</span>${(!blind && crits) ? `<span style="color:var(--crit)">⛔ ${crits}</span>` : ''}</div>
+      <div class="tiles">
+        ${tile('GIR', f(c.gir), `mg/kg/min ${girBadge}${showT ? `<br>goal ${A.gir.join('–')}` : ''}`, gs !== 'none' ? gs : '')}
+        ${tile('Total kcal/kg', f(c.totalKcalKg, 0), `PN ${f(c.tpnKcalKg, 0)} + enteral ${f(c.feedKcalKg, 0)}${showT ? `<br>goal ${A.kcal.join('–')}${A.verifyKcal ? ' (verify)' : ''}` : ''}`, ks !== 'none' ? ks : '')}
+        ${tile('Total fluids', f(c.totalFluids, 0), `mL/kg/day incl. lipid${S.extra.fluidGoal && showT ? `<br>goal ≤ ${S.extra.fluidGoal}` : ''}`, fluidOver ? 'high' : (S.extra.fluidGoal && c.totalFluids > 0 ? 'ok' : ''))}
+        ${tile('Protein / Lipid', `${f(c.aa, 2)} / ${f(c.il, 2)}`, 'g/kg/day', '')}
+        ${tile('Est. osmolarity', f(c.osm, 0), `mOsm/L (rough)${o.access === 'peripheral' && showT ? '<br>periph limit ~900' : ''}`, o.access === 'peripheral' && c.osm > 900 ? 'crit' : '')}
+      </div>
+      <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Where the calories come from</h3>
+        <div class="bar" role="img" aria-label="Calorie split">${seg('dex', c.dexKcal / (c.wt || 1))}${seg('aa', c.aaKcal / (c.wt || 1))}${seg('il', c.ilKcal / (c.wt || 1))}${seg('ent', c.feedKcalKg)}</div>
+        <div class="legend"><span><i style="background:var(--dex)"></i>Dextrose ${f(c.dexKcal / (c.wt || 1), 0)}</span><span><i style="background:var(--aa)"></i>Protein ${f(c.aaKcal / (c.wt || 1), 0)}</span><span><i style="background:var(--il)"></i>Lipid ${f(c.ilKcal / (c.wt || 1), 0)}</span><span><i style="background:var(--ent)"></i>Enteral ${f(c.feedKcalKg, 0)}</span><span>kcal/kg/day · NPC:N ${c.npcN ? f(c.npcN, 0) + ':1' : '—'}</span></div>
+        <div class="scroll"><table style="margin-top:10px"><tr><th></th><th class="n">per day</th><th class="n">per kg/day</th></tr>
+          ${row('Dextrose (' + f(c.dexG, 0) + ' g)', f(c.dexKcal, 0) + ' kcal', f(c.dexKcal / (c.wt || 1), 1))}${row('Amino acids (' + f(c.aaG, 1) + ' g)', f(c.aaKcal, 0) + ' kcal', f(c.aaKcal / (c.wt || 1), 1))}${row('Lipid (' + f(c.ilG, 1) + ' g = ' + f(c.lipidMl, 0) + ' mL)', f(c.ilKcal, 0) + ' kcal', f(c.ilKcal / (c.wt || 1), 1))}${row('<b>TPN total</b>', f(c.tpnKcal, 0) + ' kcal', f(c.tpnKcalKg, 1))}${row('Enteral', f(c.feedMl, 0) + ' mL', f(c.feedKcalKg, 1) + ' kcal')}</table></div></div>
+      <div class="card"><h3 style="margin-top:0">Fluids (mL/kg/day)</h3><div class="scroll"><table>
+          <tr><td>TPN</td><td class="n">${f(c.tpnMlKg, 1)}</td></tr><tr><td>IVF</td><td class="n">${f(c.ivfMlKg, 1)}</td></tr><tr><td>Feeds</td><td class="n">${f(c.feedMlKg, 1)}</td></tr><tr><td>Lipid volume</td><td class="n">${f(c.lipidMlKg, 1)}</td></tr>
+          <tr><td><b>Total</b> <span class="unit">(cheat-sheet total ${f(c.sheetTotalFluids, 1)} + lipid)</span></td><td class="n"><b>${f(c.totalFluids, 1)}</b></td></tr></table></div></div>
+      <div class="card"><h3 style="margin-top:0">Electrolytes</h3><div class="scroll"><table>
+        <tr><th>Total</th><th class="n">Dose</th><th class="n">Bag /L</th><th>${(!blind || cfg.showRef) ? 'Reference' : ''}</th></tr>
+        ${lyRow('Sodium', 'na', 'mEq', c.perLiter.na)}${lyRow('Potassium', 'k', 'mEq', c.perLiter.k)}
+        <tr><td>Chloride</td><td class="n">${f(c.tot.cl, 2)} <span class="unit">mEq/kg/d</span></td><td class="n">${c.perLiter.cl > 0 ? f(c.perLiter.cl, 0) : '—'}</td><td></td></tr>
+        <tr><td>Acetate</td><td class="n">${f(c.tot.acetate, 2)} <span class="unit">mEq/kg/d</span></td><td class="n">${c.perLiter.acetate > 0 ? f(c.perLiter.acetate, 0) : '—'}</td><td></td></tr>
+        ${lyRow('Phosphate', 'phos', 'mmol', c.perLiter.phos)}${lyRow('Calcium', 'ca', 'mEq', c.perLiter.ca)}${lyRow('Magnesium', 'mg', 'mEq', c.perLiter.mg)}</table></div>
+        <div class="small muted" style="margin-top:8px">Ca:Phos (molar) <b class="mono">${c.caPRatio == null ? '—' : f(c.caPRatio, 2) + ' : 1'}</b> · Phos <b class="mono">${f(c.phosPer100, 2)}</b> mmol/100 mL${(!blind || cfg.showRef) ? ' (keep &lt;2)' : ''}</div></div>
+      ${(cfg.flags && !blind) ? `<div class="card"><h3 style="margin-top:0">Safety &amp; considerations ${crits ? `<span class="badge b-crit">${crits} critical</span>` : ''}</h3>${flagsHtml}</div>` : ''}
+      ${mathHtml ? `<div class="card">${mathHtml}</div>` : ''}`;
+    }
+
+    rootEl.innerHTML = '<div class="ws"><section class="ws-in card"></section><section class="ws-out"></section></div>';
+    renderIn(); renderOut();
+
+    const onInput = (e) => {
+      const t = e.target, k = t.dataset && t.dataset.k; if (!k) return;
+      const v = t.type === 'checkbox' ? t.checked : t.value;
+      if (k.startsWith('raw.')) { S.raw[k.slice(4)] = v; canonFromRaw(); }
+      else {
+        const parts = k.split('.'); let obj = S; for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]]; obj[parts[parts.length - 1]] = v;
+        if (S.unit === 'L' && (k === 'o.rate' || k === 'pt.wt')) canonFromRaw();
+        else if (S.unit === 'kg' && (k === 'o.rate' || k === 'pt.wt')) { /* dose fixed */ }
+      }
+      renderOut(); api.emit();
+    };
+    rootEl.addEventListener('input', onInput); rootEl.addEventListener('change', (e) => { if (e.target.tagName === 'SELECT') onInput(e); });
+    rootEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-unit]'); if (!b || readOnly) return;
+      const nu = b.dataset.unit; if (nu === S.unit) return;
+      canonFromRaw(); S.unit = nu; rawFromCanon(); renderIn(); renderOut();
+    });
+
+    const listeners = [];
+    const api = {
+      cfg, emit() { listeners.forEach(fn => fn(api)); },
+      onChange(fn) { listeners.push(fn); },
+      getState() { canonFromRaw(); return { pt: { wt: wtN(), age: S.pt.age }, o: T.cloneOrder(S.o) }; },
+      calc() { canonFromRaw(); return T.calc({ wt: wtN(), age: S.pt.age }, S.o); },
+      setCase(p) {
+        if (p.pt) S.pt = { wt: p.pt.wt === 0 ? '' : p.pt.wt, age: p.pt.age };
+        if (p.o) S.o = T.cloneOrder(p.o);
+        if (p.ctx !== undefined) S.ctx = p.ctx || {};
+        if (p.extra !== undefined) S.extra = p.extra || {};
+        if (p.unit) S.unit = p.unit;
+        rawFromCanon(); renderIn(); renderOut();
+      },
+      setCtx(ctx) { S.ctx = ctx || {}; renderOut(); },
+      setExtra(x) { S.extra = x || {}; renderOut(); },
+      setReadOnly(v) { readOnly = !!v; applyLock(); },
+      refresh() { renderOut(); }
+    };
+    return api;
+  }
+
+  /* ---------------- Labs panel ---------------- */
+  function labsHtml(labs, age, prev) {
+    return `<div class="labs">${C.LAB_ORDER.map(k => {
+      const ref = T.LAB_REF[k], v = labs[k]; if (v == null) return '';
+      const fl = T.labFlag(k, v, age); const p = prev && prev[k] != null ? prev[k] : null;
+      const d = p != null && p !== v ? (v > p ? `<span class="d">▲ ${f(v - p, 1)}</span>` : `<span class="d">▼ ${f(p - v, 1)}</span>`) : '';
+      return `<div class="lab ${fl === 'low' ? 'low' : fl === 'high' ? 'high' : ''}"><div class="k">${ref.label}</div><div class="v">${v} ${d}</div><div class="r">${ref.unit}${fl === 'low' ? ' · low' : fl === 'high' ? ' · high' : ''}</div></div>`;
+    }).join('')}</div><div class="small muted" style="margin-top:6px">Reference ranges are approximate flags only — use your laboratory's ranges.${labs.alb != null && labs.ca != null ? ` Albumin-corrected Ca ≈ ${f(T.correctedCa(labs.ca, labs.alb), 1)} mg/dL.` : ''}</div>`;
+  }
+
+  /* ---------------- Case runner (Teach + Learn) ---------------- */
+  function CaseRunner(rootEl, cs, opts) {
+    opts = Object.assign({ mode: 'teach', onDone: null }, opts || {});
+    const learn = opts.mode === 'learn';
+    const st = { idx: 0, orders: [], labs: [], notes: [], flags: [] };
+    rootEl.innerHTML = `
+      <div class="card"><h2>${esc(cs.title)}</h2><p class="lede">${esc(cs.history)}</p>
+        <div class="small muted">Fluid goal ${cs.fluidGoal} mL/kg/day (teaching assumption) · ${cs.access} access · all patients fictional</div></div>
+      <div class="days" role="tablist"></div><div class="dayinfo"></div><div class="ws-host"></div><div class="actions"></div><div class="feedback"></div>`;
+    const ws = Workspace($('.ws-host', rootEl), { math: opts.mode === 'teach' || true, flags: true, targets: true, lockPatient: true, lockAccess: true });
+    ws.cfg.math = true;
+
+    function days() {
+      $('.days', rootEl).innerHTML = cs.days.map((d, i) => {
+        const done = !!st.orders[i], locked = learn && i > st.orders.length;
+        return `<button type="button" class="${done ? 'done' : ''}" data-day="${i}" ${i === st.idx ? 'aria-current="true"' : ''} ${locked ? 'disabled' : ''}>Day ${d.n}</button>`;
+      }).join('');
+    }
+    function load(i) {
+      st.idx = i;
+      const prevOrder = i > 0 ? st.orders[i - 1] || null : null;
+      const r = C.labsFor(cs, i, prevOrder); st.labs[i] = r.labs; st.notes[i] = r.notes;
+      const d = cs.days[i], committed = st.orders[i];
+      const start = committed || C.startOrderForDay(cs, i, prevOrder);
+      ws.setCase({ pt: cs.patient, o: start, ctx: r.labs, extra: { fluidGoal: cs.fluidGoal, prevOrder } });
+      ws.setReadOnly(!!committed);
+      days();
+      $('.dayinfo', rootEl).innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(d.title)}</h3>
+        <div class="story">${esc(d.narrative)}</div>
+        ${r.notes.length ? `<div class="callout bad"><b>Overnight consequences of yesterday's order</b><ul>${r.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
+        <div class="small muted" style="margin:8px 0 4px">Labs this morning${i > 0 ? ' (▲▼ = change from yesterday)' : ''}</div>${labsHtml(r.labs, cs.patient.age, i > 0 ? st.labs[i - 1] : null)}
+        ${d.feeds ? `<div class="small" style="margin-top:8px"><b>Feeds today:</b> ${d.feeds.n} × ${d.feeds.vol} mL of ${d.feeds.kcalOz} kcal/oz (pre-filled)</div>` : '<div class="small" style="margin-top:8px"><b>Feeds today:</b> NPO</div>'}</div>`;
+      actions(); $('.feedback', rootEl).innerHTML = committed ? feedbackHtml(i) : '';
+    }
+    function actions() {
+      const i = st.idx, committed = !!st.orders[i], last = i === cs.days.length - 1;
+      $('.actions', rootEl).innerHTML = committed
+        ? `${!last ? `<button class="primary" data-act="next">Go to Day ${cs.days[i + 1].n} →</button>` : `<button class="primary" data-act="summary">See case summary</button>`}<button data-act="redo" class="ghost">Redo this day (clears later days)</button>`
+        : `<button class="primary" data-act="commit">Commit order for Day ${cs.days[i].n}</button>${!learn || true ? '<button data-act="suggest" class="ghost">Show teaching-default suggestions</button><button data-act="points" class="ghost">Teaching points</button>' : ''}`;
+    }
+    function feedbackHtml(i) {
+      const d = cs.days[i], fl = st.flags[i] || [];
+      const crit = fl.filter(x => x.sev === 'crit'), warn = fl.filter(x => x.sev === 'warn');
+      return `<div class="card"><h3 style="margin-top:0">Feedback on your Day ${d.n} order</h3>
+        ${crit.length ? `<div class="callout bad"><b>${crit.length} critical issue${crit.length > 1 ? 's' : ''}</b>${crit.map(x => `<div>⛔ ${esc(x.text)}<div class="small muted">${esc(x.why)}</div></div>`).join('')}</div>` : '<div class="callout good">No critical safety issues in your order.</div>'}
+        ${warn.length ? `<div class="callout"><b>Worth a second look</b>${warn.map(x => `<div>⚠ ${esc(x.text)}<div class="small muted">${esc(x.why)}</div></div>`).join('')}</div>` : ''}
+        <details open><summary>Teaching points for this day</summary><ul>${d.teach.map(t => `<li>${esc(t)}</li>`).join('')}</ul><p><b>Debrief:</b> ${esc(d.debrief)}</p></details>
+        <details><summary>Teaching-default suggestions for the labs you saw</summary>${sugHtml(st.orders[i], st.labs[i])}</details></div>`;
+    }
+    function sugHtml(order, labs) {
+      const s = T.suggestNext(cs.patient, order, labs);
+      return s.length ? s.map(x => `<div class="sug"><div class="a">${esc(x.area)}</div><div>${esc(x.action)}</div><div class="r">${esc(x.reason)} <span class="tag tag-${/sheet/.test(x.rule) ? 's' : /verify|common/.test(x.rule) ? 'c' : 'd'}">${esc(x.rule)}</span></div></div>`).join('') : '<p class="muted">Enter a weight and rate to see suggestions.</p>';
+    }
+    function summary() {
+      const rows = cs.days.map((d, i) => { const c = T.calc(cs.patient, st.orders[i]); const fl = st.flags[i] || [];
+        return `<tr><td>Day ${d.n}</td><td class="n">${f(c.gir)}</td><td class="n">${f(c.aa, 2)}</td><td class="n">${f(c.il, 2)}</td><td class="n">${f(c.totalKcalKg, 0)}</td><td class="n">${f(c.totalFluids, 0)}</td><td class="n">${fl.filter(x => x.sev === 'crit').length}</td></tr>`; }).join('');
+      const totalCrit = st.flags.reduce((a, fl) => a + (fl || []).filter(x => x.sev === 'crit').length, 0);
+      $('.feedback', rootEl).innerHTML = `<div class="card"><h2>Case summary</h2><div class="scroll"><table><tr><th>Day</th><th class="n">GIR</th><th class="n">AA</th><th class="n">Lipid</th><th class="n">kcal/kg</th><th class="n">mL/kg</th><th class="n">Critical</th></tr>${rows}</table></div>
+        <p class="${totalCrit ? 'fail' : 'pass'}"><b>${totalCrit ? totalCrit + ' critical flag(s) across the case — review the days above.' : 'No critical safety flags across the case.'}</b></p></div>`;
+      if (opts.onDone) opts.onDone({ crit: totalCrit });
+    }
+
+    rootEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !rootEl.contains(b)) return;
+      if (b.dataset.day != null) { load(+b.dataset.day); return; }
+      const act = b.dataset.act, i = st.idx;
+      if (act === 'commit') {
+        const s = ws.getState(); if (!(s.pt.wt > 0) || !(num(s.o.rate) > 0)) { $('.feedback', rootEl).innerHTML = '<div class="callout bad">Enter a TPN rate before committing the order.</div>'; return; }
+        st.orders[i] = s.o; st.flags[i] = T.evaluate(cs.patient, s.o, st.labs[i], { fluidGoal: cs.fluidGoal, prevOrder: i > 0 ? st.orders[i - 1] : null }).flags;
+        // drop stale later days if redoing
+        st.orders.length = i + 1; ws.setReadOnly(true); days(); actions(); $('.feedback', rootEl).innerHTML = feedbackHtml(i);
+      } else if (act === 'next') { load(i + 1); window.scrollTo({ top: rootEl.offsetTop - 10, behavior: 'smooth' }); }
+      else if (act === 'redo') { st.orders.length = i; st.flags.length = i; load(i); }
+      else if (act === 'summary') summary();
+      else if (act === 'suggest') { const s = ws.getState(); $('.feedback', rootEl).innerHTML = `<div class="card"><h3 style="margin-top:0">Teaching-default suggestions (based on today's labs and your current order)</h3><p class="small muted">Defaults to compare your thinking against — not a protocol. Replace with TCPCHD / Dell Children's guidance.</p>${sugHtml(s.o, st.labs[i])}</div>`; }
+      else if (act === 'points') { const d = cs.days[i]; $('.feedback', rootEl).innerHTML = `<div class="card"><h3 style="margin-top:0">Teaching points — Day ${d.n}</h3><ul>${d.teach.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`; }
+    });
+    load(0);
+    return { load, state: st, ws };
+  }
+
+  root.TPNUI = { esc, f, $, $$, Workspace, labsHtml, CaseRunner, RANGE_TXT };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Page chrome: header nav + disclaimer footer. */
+(function (root) {
+  'use strict';
+  const PAGES = [['index.html', 'Home', 'home'], ['teach.html', 'Teach', 'teach'], ['learn.html', 'Learn', 'learn'], ['check.html', 'Check-off', 'check']];
+  function mount(active) {
+    const top = document.createElement('header'); top.className = 'top';
+    top.innerHTML = `<div class="in"><a class="brand" href="index.html">TPN Lab</a><nav aria-label="Primary">${PAGES.map(p => `<a href="${p[0]}" ${p[2] === active ? 'aria-current="page"' : ''}>${p[1]}</a>`).join('')}</nav></div>`;
+    document.body.insertBefore(top, document.body.firstChild);
+    const ft = document.createElement('footer'); ft.className = 'disclaimer';
+    ft.innerHTML = '<b>Educational simulator — not for patient care.</b> All patients are fictional. Formulas and ranges are drawn from the TCPCHD TPN &amp; TF cheat sheet (6/30/23) where tagged <span class="tag tag-s">sheet</span>; items tagged <span class="tag tag-c">verify</span> are commonly cited and must be checked against your institutional protocol; <span class="tag tag-d">default</span> items are teaching defaults. Always follow your institution\'s PN protocol, pharmacy and attending/RD guidance. Check-off pass criteria are provisional and not validated.';
+    document.body.appendChild(ft);
+  }
+  root.TPNShell = { mount };
+})(window);
+
+</script>
+<script>
+/* Check-off mode: blinded calculations, order-building cases, knowledge check; scored report + transcript.
+   PASS CRITERIA ARE PROVISIONAL. Not a validated competency instrument. */
+(function () {
+  'use strict';
+  const T = TPN, C = TPNC, U = TPNUI, K = C.CHECK, $ = U.$, esc = U.esc;
+  TPNShell.mount('check');
+  const app = $('#app');
+  const S = { name: '', id: '', ref: false, calc: [], cases: [], multis: {}, mcq: [], started: null, step: 0 };
+  const steps = ['calc', ...K.CASES.map((c, i) => 'case' + i), 'mcq', 'report'];
+  const bar = () => `<div class="prog"><i style="width:${S.step / (steps.length - 1) * 100}%"></i></div>`;
+
+  function start() {
+    app.innerHTML = `<div class="card"><h1>Check-off</h1><p class="lede">A blinded assessment: no targets, flags or suggestions are shown while you work. You will complete ${K.CALC.length} calculations, ${K.CASES.length} order-building cases, and ${K.MCQ.length} knowledge questions.</p>
+      <div class="callout"><b>Provisional.</b> Scoring thresholds are drafts for local educators to set and validate. Do not use as a formal competency determination without local approval.</div>
+      <div class="row two" style="margin-top:12px"><div><label for="nm">Name</label><input id="nm" type="text" autocomplete="off"></div><div><label for="sid">Learner ID (optional)</label><input id="sid" type="text" autocomplete="off"></div></div>
+      <label class="chk"><input type="checkbox" id="rf"> Allow the quick reference card (formulas, goals, ranges) during the assessment</label>
+      <div class="actions"><button class="primary" id="go">Begin</button></div></div>`;
+    $('#go').onclick = () => { S.name = $('#nm').value.trim(); S.id = $('#sid').value.trim(); S.ref = $('#rf').checked; S.started = new Date().toISOString(); S.step = 0; next(0); };
+  }
+  function refCard() {
+    if (!S.ref) return '';
+    const A = T.AGES;
+    return `<details class="card"><summary>Reference card</summary><ul><li>GIR = dex% × mL/hr ÷ kg ÷ 6</li><li>Dextrose 3.4 · protein 4 · lipid 10 kcal/g (20% = 2 kcal/mL, 5 mL/g)</li><li>mEq/kg/day = mEq/L × L/day ÷ kg</li><li>K-phos 1 mmol = 1.5 mEq K · Ca gluconate mEq ÷ 2 = mmol</li><li>GIR goal: infant ${A.infant.gir.join('–')}, child ${A.child.gir.join('–')}, adolescent ${A.adolescent.gir.join('–')}</li><li>TG 200–300 hold advancing · &gt;300 hold lipid · BUN ≥30 reduce protein 0.5–1 · phos &lt;2 mmol/100 mL</li></ul></details>`;
+  }
+  function next(n) { S.step = n; const s = steps[n]; if (s === 'calc') calc(); else if (s === 'mcq') mcq(); else if (s === 'report') report(); else casePage(+s.slice(4)); window.scrollTo(0, 0); }
+
+  function calc() {
+    app.innerHTML = `${bar()}<div class="card"><h2>Part A: Calculations</h2><p class="small muted">Enter numbers only. Answers within ~3% are accepted.</p>${refCard()}
+      ${K.CALC.map((q, i) => `<div style="margin:14px 0"><p><b>${i + 1}.</b> ${esc(q.prompt)}</p><div class="row two"><div><label for="c${i}">Answer <span class="unit">${esc(q.unit)}</span></label><input id="c${i}" type="number" inputmode="decimal" step="any"></div></div></div>`).join('')}
+      <div class="actions"><button class="primary" id="nx">Continue to cases →</button></div></div>`;
+    $('#nx').onclick = () => { S.calc = K.CALC.map((q, i) => { const v = parseFloat($('#c' + i).value), a = q.ans(); return { id: q.id, prompt: q.prompt, unit: q.unit, given: isFinite(v) ? v : null, answer: a, ok: isFinite(v) && Math.abs(v - a) <= Math.abs(a) * q.tol }; }); next(1); };
+  }
+
+  function casePage(ci) {
+    const cs = K.CASES[ci], base = cs.start;
+    app.innerHTML = `${bar()}<div class="card"><h2>Part B: ${esc(cs.title)}</h2><div class="story">${cs.story}</div><div class="small muted" style="margin:8px 0 4px">Labs</div>${U.labsHtml(cs.labs, cs.patient.age, null)}
+      ${cs.prev ? '<p class="small"><b>Yesterday\'s order is pre-loaded.</b> Edit it to today\'s order.</p>' : ''}</div>${refCard()}<div id="ws"></div>
+      ${cs.multis.map((m, mi) => `<div class="card" data-m="${mi}"><p>${m.prompt}</p>${m.options.map((o, oi) => `<label class="opt"><input type="checkbox" value="${oi}"><span>${esc(o.t)}</span></label>`).join('')}</div>`).join('')}
+      <div class="actions"><button class="primary" id="nx">${ci === K.CASES.length - 1 ? 'Continue to knowledge check →' : 'Continue to next case →'}</button></div>`;
+    const ws = U.Workspace($('#ws'), { blind: true, math: false, flags: false, targets: false, lockPatient: true, lockAccess: true, showRef: S.ref });
+    ws.setCase({ pt: cs.patient, o: cs.prev || base, ctx: cs.labs, extra: { fluidGoal: cs.fluidGoal, prevOrder: cs.prev || null } });
+    $('#nx').onclick = () => {
+      const s = ws.getState(); if (!(num(s.o.rate) > 0) && !confirm('The TPN rate is blank/zero. Submit this order as-is?')) return;
+      const r = K.scoreCase(cs, s.o);
+      const mres = cs.multis.map((m, mi) => { const picked = Array.from(document.querySelectorAll(`[data-m="${mi}"] input:checked`)).map(x => +x.value); return { id: m.id, picked, score: K.scoreMulti(m, picked), def: m }; });
+      S.cases[ci] = { cs, order: s.o, res: r, multis: mres }; next(S.step + 1);
+    };
+  }
+  const num = T.num;
+
+  function mcq() {
+    app.innerHTML = `${bar()}<div class="card"><h2>Part C: Knowledge check</h2>${refCard()}
+      ${K.MCQ.map((q, i) => `<div style="margin:14px 0"><p><b>${i + 1}.</b> ${esc(q.q)}</p>${q.opts.map((o, oi) => `<label class="opt"><input type="radio" name="m${i}" value="${oi}"><span>${esc(o)}</span></label>`).join('')}</div>`).join('')}
+      <div class="actions"><button class="primary" id="nx">Submit and see report</button></div></div>`;
+    $('#nx').onclick = () => { S.mcq = K.MCQ.map((q, i) => { const sel = document.querySelector(`input[name=m${i}]:checked`); return { q, given: sel ? +sel.value : null, ok: !!sel && +sel.value === q.ans }; }); next(S.step + 1); };
+  }
+
+  function totals() {
+    const calcGot = S.calc.filter(x => x.ok).length, mcqGot = S.mcq.filter(x => x.ok).length;
+    let caseGot = 0, caseMax = 0; const crits = [];
+    S.cases.forEach(c => { caseGot += c.res.earned; caseMax += c.res.max; c.multis.forEach(m => { caseGot += m.score.got; caseMax += m.score.max; }); c.res.crits.forEach(x => crits.push({ caseTitle: c.cs.title, ...x })); });
+    const sum = K.summarize({ calcGot, calcMax: K.CALC.length, mcqGot, mcqMax: K.MCQ.length, caseGot, caseMax, crits });
+    return { calcGot, mcqGot, caseGot, caseMax, crits, sum };
+  }
+  const pct = (x) => Math.round(x * 100) + '%';
+
+  function report() {
+    const t = totals(), s = t.sum;
+    app.innerHTML = `<div class="card"><h1>Report</h1><p>${esc(S.name || 'Unnamed learner')}${S.id ? ' · ' + esc(S.id) : ''} · ${new Date(S.started).toLocaleString()}${S.ref ? ' · reference card allowed' : ''}</p>
+      <div class="tiles"><div class="tile"><div class="k">Calculations</div><div class="v">${t.calcGot}/${K.CALC.length}</div><div class="s">need ${Math.ceil(K.PASS.calc * K.CALC.length - 1e-9)}</div></div>
+      <div class="tile"><div class="k">Cases</div><div class="v">${pct(s.caseFrac)}</div><div class="s">need ${pct(K.PASS.cases)}</div></div>
+      <div class="tile"><div class="k">Knowledge</div><div class="v">${t.mcqGot}/${K.MCQ.length}</div><div class="s">need ${pct(K.PASS.mcq)}</div></div>
+      <div class="tile"><div class="k">Critical errors</div><div class="v">${s.crit}</div><div class="s">need 0</div></div></div>
+      <p class="score ${s.pass ? 'pass' : 'fail'}">${s.pass ? 'Meets provisional criteria' : 'Does not yet meet provisional criteria'}</p>
+      <p class="small muted">Provisional, unvalidated thresholds. Final determination belongs to a qualified local educator.</p>
+      <div class="actions"><button class="primary" id="dj">Download transcript (JSON)</button><button id="dt">Download transcript (text)</button><button class="ghost" id="rs">Start over</button></div></div>
+      ${t.crits.length ? `<div class="card"><h3 style="margin-top:0">Critical errors</h3>${t.crits.map(x => `<div class="flag crit"><b>⛔ ${esc(x.label)}</b><div class="why">${esc(x.caseTitle)}</div></div>`).join('')}</div>` : ''}
+      <div class="card"><h3 style="margin-top:0">Calculations</h3><div class="scroll"><table><tr><th>#</th><th class="n">Yours</th><th class="n">Answer</th><th></th></tr>${S.calc.map((x, i) => `<tr><td>${i + 1}</td><td class="n">${x.given == null ? '—' : T.r(x.given, 2)}</td><td class="n">${T.r(x.answer, 2)} ${esc(x.unit)}</td><td>${x.ok ? '✓' : '✗'}</td></tr>`).join('')}</table></div></div>
+      ${S.cases.map(c => `<div class="card"><h3 style="margin-top:0">${esc(c.cs.title)}: ${T.r(c.res.earned, 1)}/${c.res.max}</h3><div class="scroll"><table><tr><th>Item</th><th class="n">Pts</th><th>Why</th></tr>${c.res.items.map(it => `<tr><td>${esc(it.label)}</td><td class="n">${T.r(it.got, 1)}/${it.pts}</td><td class="small muted">${it.f < 1 ? esc(it.why) : ''}</td></tr>`).join('')}</table></div>
+        ${c.multis.map(m => `<p class="small"><b>${esc(m.id)}:</b> ${T.r(m.score.got, 1)}/${m.score.max} (${m.score.hits} right, ${m.score.wrong} wrong picks)</p>`).join('')}
+        <p class="small muted">Your order: rate ${c.order.rate}, D${c.order.dex}, AA ${c.order.aa}, lipid ${c.order.il}; GIR ${T.r(c.res.calc.gir)}, ${T.r(c.res.calc.totalKcalKg, 0)} kcal/kg, ${T.r(c.res.calc.totalFluids, 0)} mL/kg.</p></div>`).join('')}
+      <div class="card"><h3 style="margin-top:0">Knowledge check</h3>${S.mcq.map((x, i) => `<div class="small" style="margin:8px 0"><b>${i + 1}. ${x.ok ? '✓' : '✗'}</b> ${esc(x.q.q)}${x.ok ? '' : `<br>Correct: ${esc(x.q.opts[x.q.ans])}. ${esc(x.q.why)}`}</div>`).join('')}</div>`;
+    const payload = () => ({ tool: 'TPN Lab check-off (provisional)', learner: S.name, id: S.id, started: S.started, finished: new Date().toISOString(), referenceAllowed: S.ref, passCriteria: K.PASS, result: { calcGot: t.calcGot, calcMax: K.CALC.length, mcqGot: t.mcqGot, mcqMax: K.MCQ.length, caseFrac: s.caseFrac, criticalErrors: t.crits, meetsProvisional: s.pass },
+      calculations: S.calc.map(x => ({ id: x.id, given: x.given, answer: x.answer, ok: x.ok })), cases: S.cases.map(c => ({ id: c.cs.id, order: c.order, earned: c.res.earned, max: c.res.max, items: c.res.items.map(i => ({ id: i.id, got: i.got, pts: i.pts })), crits: c.res.crits, multis: c.multis.map(m => ({ id: m.id, picked: m.picked, got: m.score.got })) })), mcq: S.mcq.map(x => ({ id: x.q.id, given: x.given, ok: x.ok })) });
+    const dl = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+    $('#dj').onclick = () => dl('tpn-checkoff-transcript.json', JSON.stringify(payload(), null, 2), 'application/json');
+    $('#dt').onclick = () => { const p = payload(); dl('tpn-checkoff-transcript.txt', [`TPN Lab check-off (PROVISIONAL, unvalidated)`, `Learner: ${p.learner} ${p.id}`, `Started: ${p.started}`, `Calculations: ${t.calcGot}/${K.CALC.length}`, `Cases: ${pct(s.caseFrac)}`, `Knowledge: ${t.mcqGot}/${K.MCQ.length}`, `Critical errors: ${t.crits.map(x => x.label).join('; ') || 'none'}`, `Meets provisional criteria: ${s.pass}`].join('\n'), 'text/plain'); };
+    $('#rs').onclick = () => { S.calc = []; S.cases = []; S.mcq = []; start(); };
+  }
+  start();
+})();
+
+</script>
+</body></html>
