@@ -50,9 +50,9 @@
 
   function mcq() {
     app.innerHTML = `${bar()}<div class="card"><h2>Part C: Knowledge check</h2>${refCard()}
-      ${K.MCQ.map((q, i) => `<div style="margin:14px 0"><p><b>${i + 1}.</b> ${esc(q.q)}</p>${q.opts.map((o, oi) => `<label class="opt"><input type="radio" name="m${i}" value="${oi}"><span>${esc(o)}</span></label>`).join('')}</div>`).join('')}
+      ${(S.mcqSet = K.MCQ.map(U.shuffleQ)).map((q, i) => `<div style="margin:14px 0"><p><b>${i + 1}.</b> ${esc(q.q)}</p>${q.opts.map((o, oi) => `<label class="opt"><input type="radio" name="m${i}" value="${oi}"><span>${esc(o)}</span></label>`).join('')}</div>`).join('')}
       <div class="actions"><button class="primary" id="nx">Submit and see report</button></div></div>`;
-    $('#nx').onclick = () => { S.mcq = K.MCQ.map((q, i) => { const sel = document.querySelector(`input[name=m${i}]:checked`); return { q, given: sel ? +sel.value : null, ok: !!sel && +sel.value === q.ans }; }); next(S.step + 1); };
+    $('#nx').onclick = () => { S.mcq = S.mcqSet.map((q, i) => { const sel = document.querySelector(`input[name=m${i}]:checked`); return { q, given: sel ? +sel.value : null, givenText: sel ? q.opts[+sel.value] : null, ok: !!sel && +sel.value === q.ans }; }); next(S.step + 1); };
   }
 
   function totals() {
@@ -81,7 +81,7 @@
         <p class="small muted">Your order: rate ${c.order.rate}, D${c.order.dex}, AA ${c.order.aa}, lipid ${c.order.il}; GIR ${T.r(c.res.calc.gir)}, ${T.r(c.res.calc.totalKcalKg, 0)} kcal/kg, ${T.r(c.res.calc.totalFluids, 0)} mL/kg.</p></div>`).join('')}
       <div class="card"><h3 style="margin-top:0">Knowledge check</h3>${S.mcq.map((x, i) => `<div class="small" style="margin:8px 0"><b>${i + 1}. ${x.ok ? '✓' : '✗'}</b> ${esc(x.q.q)}${x.ok ? '' : `<br>Correct: ${esc(x.q.opts[x.q.ans])}. ${esc(x.q.why)}`}</div>`).join('')}</div>`;
     const payload = () => ({ tool: 'TPN Lab check-off (provisional)', learner: S.name, id: S.id, started: S.started, finished: new Date().toISOString(), referenceAllowed: S.ref, passCriteria: K.PASS, result: { calcGot: t.calcGot, calcMax: K.CALC.length, mcqGot: t.mcqGot, mcqMax: K.MCQ.length, caseFrac: s.caseFrac, criticalErrors: t.crits, meetsProvisional: s.pass },
-      calculations: S.calc.map(x => ({ id: x.id, given: x.given, answer: x.answer, ok: x.ok })), cases: S.cases.map(c => ({ id: c.cs.id, order: c.order, earned: c.res.earned, max: c.res.max, items: c.res.items.map(i => ({ id: i.id, got: i.got, pts: i.pts })), crits: c.res.crits, multis: c.multis.map(m => ({ id: m.id, picked: m.picked, got: m.score.got })) })), mcq: S.mcq.map(x => ({ id: x.q.id, given: x.given, ok: x.ok })) });
+      calculations: S.calc.map(x => ({ id: x.id, given: x.given, answer: x.answer, ok: x.ok })), cases: S.cases.map(c => ({ id: c.cs.id, order: c.order, earned: c.res.earned, max: c.res.max, items: c.res.items.map(i => ({ id: i.id, got: i.got, pts: i.pts })), crits: c.res.crits, multis: c.multis.map(m => ({ id: m.id, picked: m.picked, got: m.score.got })) })), mcq: S.mcq.map(x => ({ id: x.q.id, given: x.givenText, ok: x.ok })) });
     const dl = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
     $('#dj').onclick = () => dl('tpn-checkoff-transcript.json', JSON.stringify(payload(), null, 2), 'application/json');
     $('#dt').onclick = () => { const p = payload(); dl('tpn-checkoff-transcript.txt', [`TPN Lab check-off (PROVISIONAL, unvalidated)`, `Learner: ${p.learner} ${p.id}`, `Started: ${p.started}`, `Calculations: ${t.calcGot}/${K.CALC.length}`, `Cases: ${pct(s.caseFrac)}`, `Knowledge: ${t.mcqGot}/${K.MCQ.length}`, `Critical errors: ${t.crits.map(x => x.label).join('; ') || 'none'}`, `Meets provisional criteria: ${s.pass}`].join('\n'), 'text/plain'); };

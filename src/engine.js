@@ -10,9 +10,11 @@
   const K_PER_MMOL_PHOS = 1.5;                   // potassium phosphate: 1 mmol = 1.5 mEq K (sheet)
 
   const AGES = {
-    infant:     { label: 'Infant (<1 yr)',      gir: [12, 14], kcal: [85, 105], aa: [2, 3],     verifyKcal: false },
-    child:      { label: 'Child (1–10 yr)',     gir: [8, 10],  kcal: [60, 90],  aa: [1, 2],     verifyKcal: true  },
-    adolescent: { label: 'Adolescent (>35 kg)', gir: [5, 6],   kcal: [30, 50],  aa: [0.8, 1.5], verifyKcal: false }
+    // kcal = parenteral goal. Infant 90–110 PN-only (CCU CHD guideline; the sheet says 85–105), rising toward 120–150 when fed enterally (blend in kcalRange).
+    // Child 1–7 yr 75–90, 7–12 yr 50–75 (Dell Children's TPN slides / Neo-Pedia table). Adolescent 30–50.
+    infant:     { label: 'Infant (<1 yr)',      gir: [12, 14], kcal: [90, 110], kcalEnt: [120, 150], aa: [3, 4],     ilMax: 3.5, girStep: '2–4 (neonates 1–2)', verifyKcal: false },
+    child:      { label: 'Child (1–10 yr)',     gir: [8, 10],  kcal: [75, 90],  kcalEnt: [75, 90],   aa: [1, 2],     ilMax: 3,   girStep: '2–4',                verifyKcal: false },
+    adolescent: { label: 'Adolescent (>35 kg)', gir: [5, 6],   kcal: [30, 50],  kcalEnt: [30, 50],   aa: [0.8, 1.5], ilMax: 2.5, girStep: '1–2',                verifyKcal: false }
   };
   // gir + infant/adolescent kcal: cheat sheet. child kcal and all aa goals: commonly cited (ASPEN-style) — VERIFY locally.
 
@@ -39,11 +41,11 @@
   // Minor / major adjustment steps from the cheat sheet ("HOW TO ADJUST ELECTROLYTES")
   const ADJUST = {
     na:      { minor: '½NS → ¾NS → NS, or +1–2 mEq/kg/day', major: '½NS → NS, or +3–4 mEq/kg/day', bolus: 'NS 20 mL/kg' },
-    k:       { minor: '+1 mEq/kg/day (or +10 mEq/L)',       major: '+1.5–2 mEq/kg/day (20 mEq/L)', bolus: '1 mEq/kg/dose' },
+    k:       { minor: '+1 mEq/kg/day (or +10 mEq/L)',       major: '+1.5–2 mEq/kg/day (20 mEq/L)', bolus: 'IV replacement 0.5–1 mEq/kg/dose infused at 0.3–0.5 mEq/kg/hr (max 1 mEq/kg/hr) — an infusion, never a push; the sheet table prints "1 mEq/kg/dose"' },
     acetate: { minor: '+1 mEq/kg/day',                      major: '+2 mEq/kg/day',                bolus: '1 mEq/kg/dose' },
     phos:    { minor: '+0.25 mmol/kg/day',                  major: '+0.5 mmol/kg/day',             bolus: '0.25–0.5 mmol/kg/dose' },
-    mg:      { minor: '+0.3 mEq/kg/day',                    major: '+0.5 mEq/kg/day',              bolus: '25–50 mg/kg/dose' },
-    ca:      { minor: '+1 mEq/kg/day',                      major: '+2 mEq/kg/day',                bolus: '50 mg/kg/dose (sheet prints "/day" — likely a typo; VERIFY)' }
+    mg:      { minor: '+0.3 mEq/kg/day',                    major: '+0.5 mEq/kg/day',              bolus: '25–50 mg/kg/dose of MgSO₄ salt; slides also give a 0.2–0.4 mEq/kg rider if Mg <1.5' },
+    ca:      { minor: '+1 mEq/kg/day',                      major: '+2 mEq/kg/day',                bolus: '50–200 mg/kg/day of calcium gluconate SALT in 1–4 divided doses (Dell Children\'s slides) — mg of salt, not mEq of element' }
   };
 
   // Approximate lab reference ranges for flagging only. VERIFY against your laboratory.
@@ -128,6 +130,7 @@
 
     const aaPct = rate > 0 ? aaG / (rate * 24 / 100) : 0;              // g AA per 100 mL
     const osm = dex * 50.5 + aaPct * 100 + 2 * (perLiter.na + perLiter.k + perLiter.ca + perLiter.mg); // rough estimate [BEYOND SHEET]
+    const cysteineMg = o.cysteine ? aaG * 40 : 0;                      // 40 mg per g amino acid (Dell Children's slides / pharmacy tips)
     const nitrogen = aaG / 6.25;
     const npcN = nitrogen > 0 ? (dexKcal + ilKcal) / nitrogen : 0;
 
@@ -137,7 +140,8 @@
       wt, age, rate, dex, aa, il, ivf, tpnL, gir, dexG, dexKcal, aaG, aaKcal, ilG, ilKcal, tpnKcal, tpnKcalKg,
       feedMl, feedKcalKg, feedMlKg, tpnIvfMlKg, sheetTotalFluids, lipidMl, lipidMlKg, totalFluids, totalKcalKg,
       tpnMlKg: wt > 0 ? rate * 24 / wt : 0, ivfMlKg: wt > 0 ? ivf * 24 / wt : 0,
-      lytes: ly, tot, perLiter, perDay, caMmolKg, caPRatio, phosPer100, aaPct, osm, nitrogen, npcN, kcalSplit,
+      lytes: ly, tot, perLiter, perDay, caMmolKg, caPRatio, phosPer100, aaPct, osm, nitrogen, npcN, kcalSplit, cysteineMg,
+      years: pt.years == null || pt.years === '' ? null : num(pt.years),
       feedPctKcal: totalKcalKg > 0 ? feedKcalKg / totalKcalKg : 0
     };
   }
@@ -150,7 +154,15 @@
     return v < rg[0] ? 'low' : v > rg[1] ? 'high' : 'ok';
   }
   function girStatus(c) { const g = AGES[c.age].gir; return c.gir <= 0 ? 'none' : c.gir < g[0] ? 'low' : c.gir > g[1] ? 'high' : 'ok'; }
-  function kcalStatus(c) { const g = AGES[c.age].kcal; return c.totalKcalKg <= 0 ? 'none' : c.totalKcalKg < g[0] ? 'low' : c.totalKcalKg > g[1] ? 'high' : 'ok'; }
+  /** Calorie goal for the current order. Infants blend 90–110 (PN) toward 120–150 (enteral) by the enteral share of calories.
+      Children use 7–12 yr 50–75 when an age in years ≥7 is entered, otherwise 1–7 yr 75–90. */
+  function kcalRange(c) {
+    const A = AGES[c.age];
+    if (c.age === 'child' && c.years != null && c.years >= 7) return [50, 75];
+    const s = c.feedPctKcal || 0;
+    return [Math.round(A.kcal[0] * (1 - s) + A.kcalEnt[0] * s), Math.round(A.kcal[1] * (1 - s) + A.kcalEnt[1] * s)];
+  }
+  function kcalStatus(c) { const g = kcalRange(c); return c.totalKcalKg <= 0 ? 'none' : c.totalKcalKg < g[0] ? 'low' : c.totalKcalKg > g[1] ? 'high' : 'ok'; }
 
   /** Albumin-corrected total calcium (mg/dL). Ionized Ca is preferred in critically ill children. */
   function correctedCa(ca, alb) { return ca + 0.8 * (4 - alb); }
@@ -194,8 +206,9 @@
       else if (ctx.tg >= 200 && prev && c.il > prev.ilG / prev.wt + 0.01) add('crit', 'adv-il-tg', `TG ${ctx.tg} mg/dL (200–300) and lipid was advanced.`, 'Cheat sheet: hold advancement of lipid if TG 200–300.');
       else if (ctx.tg >= 200) add('warn', 'tg-borderline', `TG ${ctx.tg} mg/dL (200–300).`, 'Hold lipid advancement; recheck TG after steady rate. Institutional thresholds vary.');
     }
-    if (c.il > 3) add('crit', 'il-max', `Lipid ${r(c.il, 2)} g/kg/day is above the usual 3 g/kg/day ceiling.`, 'Higher lipid doses risk hypertriglyceridemia, hepatic and pulmonary complications. VERIFY local max.');
-    if (ctx.tg != null && ctx.tg >= 200 && age === 'infant' && num(o.carnitine) === 0) add('info', 'carnitine', 'Consider L-carnitine 10 mg/kg/day (up to 20) for infants with elevated TG.', 'Cheat sheet: L-carnitine helps lower TG — most relevant with prolonged TPN or low carnitine stores.');
+    if (c.il > AGES[age].ilMax) add('crit', 'il-max', `Lipid ${r(c.il, 2)} g/kg/day is above the usual ${AGES[age].ilMax} g/kg/day ceiling for this age.`, 'Dell Children\'s slides: infants goal 3–3.5, children 2–3, adolescents 1–2.5 g/kg/day (max 500 mL/day). Higher doses risk hypertriglyceridemia and liver injury.');
+    if (c.il === 0 && c.aa > 0) add('info', 'efad', 'No lipid in this order.', 'Essential fatty acid deficiency can develop if lipid is absent for more than about a week or two. Roughly 0.5 g/kg/day, or 8–10% of PN calories as fat, prevents it (pharmacy tips / Dell slides). Hold lipid for high TG, but plan a minimum dose.');
+    if (ctx.tg != null && ctx.tg >= 200 && age === 'infant' && num(o.carnitine) === 0) add('info', 'carnitine', 'Consider L-carnitine 10 mg/kg/day (up to 20) for infants with elevated TG.', 'Sheet: helps lower TG. CCU CHD guideline: consider 10 mg/kg/day if TG ≥250 or the infant is NPO >14 days. PN contains no carnitine, yet long-chain fat transport needs it.');
     if (num(o.carnitine) > 20) add('warn', 'carnitine-high', 'L-carnitine above 20 mg/kg/day.', 'Cheat sheet range is 10 up to 20 mg/kg/day for infants.');
 
     // Calcium / phosphate
@@ -217,8 +230,10 @@
 
     // Access / osmolarity
     if (o.access === 'peripheral') {
-      if (c.osm > 900) add('crit', 'periph-osm', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L via peripheral line.`, 'Commonly cited limit for peripheral PN is ~900 mOsm/L (dextrose ≲12.5%). Hyperosmolar PN causes phlebitis/infiltration injury. VERIFY policy.');
-      else if (c.osm >= 800) add('warn', 'periph-osm-near', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L — near the peripheral limit.`, 'Commonly cited ~900 mOsm/L limit — VERIFY policy.');
+      if (c.osm > 1100) add('crit', 'periph-osm', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L via peripheral line.`, 'Dell Children\'s TPN slides: peripheral limit 1100 mOsm/L (other centers use ~900). Hyperosmolar PN causes phlebitis and infiltration injury.');
+      else if (c.osm >= 900) add('warn', 'periph-osm-near', `Estimated osmolarity ≈ ${Math.round(c.osm)} mOsm/L — at or above ~900.`, 'Some centers cap peripheral PN near 900 mOsm/L; Dell Children\'s slides use 1100. Know your pharmacy\'s limit.');
+      if (c.perLiter.k > 40) add('crit', 'periph-k', `Potassium ${Math.round(c.perLiter.k)} mEq/L via peripheral line (limit 40).`, 'Dell Children\'s slides: peripheral PN max potassium 40 mEq/L. Concentrated potassium injures small veins.');
+      if (c.perLiter.ca > 13.5) add('crit', 'periph-ca', `Calcium ${r(c.perLiter.ca, 1)} mEq/L via peripheral line (limit 13.5).`, 'Dell Children\'s slides: peripheral PN max calcium 13.5 mEq/L. Calcium extravasation causes tissue necrosis.');
       if (c.dex > 12.5) add('crit', 'periph-dex', `Dextrose ${c.dex}% via peripheral line.`, 'Peripheral PN is generally limited to ≤12.5% dextrose — VERIFY policy.');
     }
 
@@ -227,11 +242,14 @@
     if (c.lipidMlKg > 0 && extra.fluidGoal) add('info', 'lipid-volume', `Lipid adds ${r(c.lipidMl, 0)} mL/day (${r(c.lipidMlKg, 1)} mL/kg/day).`, 'Lipid volume counts toward total fluids when run separately — the cheat sheet total does not include it.');
 
     // Calories
-    if (kcalStatus(c) === 'high') add('warn', 'kcal-high', `Total ${r(c.totalKcalKg, 0)} kcal/kg/day is above the ${AGES[age].kcal.join('–')} goal.`, 'Overfeeding raises CO₂ production and risks steatosis. Cardiac patients may have different targets.');
+    if (kcalStatus(c) === 'high') add('warn', 'kcal-high', `Total ${r(c.totalKcalKg, 0)} kcal/kg/day is above the ${kcalRange(c).join('–')} goal.`, 'Overfeeding raises CO₂ production and risks steatosis. Parenteral needs run about 10% below enteral (no energy spent on digestion and absorption).');
     if (age === 'child') { /* child kcal target flagged in UI as "verify" */ }
 
     // Enteral transition
-    if (c.feedKcalKg > 0 && c.feedPctKcal >= 0.5 && c.tpnKcalKg > 0) add('info', 'wean', `Enteral feeds provide ${Math.round(c.feedPctKcal * 100)}% of calories.`, 'Plan the TPN wean as feeds advance (commonly ≥50% enteral → wean; ≥75% → stop) — VERIFY protocol.');
+    if (c.feedKcalKg > 0 && c.feedPctKcal >= 0.5 && c.tpnKcalKg > 0) add('info', 'wean', `Enteral feeds provide ${Math.round(c.feedPctKcal * 100)}% of calories.`, 'Plan the TPN wean as feeds advance (commonly ≥50% enteral → wean; ≥75% → stop).');
+    if (c.feedMlKg >= 80 && c.il > 1.01 && c.tpnKcalKg > 0) add('info', 'cardiac-wean-lipid', `Enteral feeds are ${r(c.feedMlKg, 0)} mL/kg/day.`, 'CCU CHD feeding guideline: at 80–100 mL/kg/day of feeds drop lipid to 1 g/kg/day; at about 120 mL/kg/day stop TPN and lipid.');
+    if (c.feedMlKg >= 120 && c.tpnKcalKg > 0) add('info', 'cardiac-wean-stop', `Enteral feeds are ${r(c.feedMlKg, 0)} mL/kg/day.`, 'CCU CHD feeding guideline: stop TPN and lipid at about 120 mL/kg/day of feeds.');
+    if (ctx.diuretic && c.tot.acetate > 0) add('info', 'diuretic-acetate', 'Loop diuretic on board with acetate in the PN.', 'Pharmacy tips: patients on furosemide waste chloride, so the PN should be all chloride. Use acetate only for acidosis or high chloride.');
 
     // Cardiac-specific reminders always shown as info when TPN running
     return { calc: c, flags };
@@ -249,7 +267,7 @@
     if (ctx.glu != null && ctx.glu > 250) sug('Dextrose', `Reduce GIR by 1–2 mg/kg/min (from ${r(c.gir)} → ~${r(Math.max(c.gir - 1.5, 2.5))}).`, `Glucose ${ctx.glu} mg/dL — marked hyperglycemia. Consider insulin per protocol.`, 'teaching default');
     else if (ctx.glu != null && ctx.glu > 180) sug('Dextrose', `Hold GIR at ${r(c.gir)} mg/kg/min.`, `Glucose ${ctx.glu} mg/dL (>180) — do not advance.`, 'teaching default');
     else if (c.gir >= goal[1]) sug('Dextrose', `At goal — hold GIR ${r(c.gir)}.`, `Goal ${goal.join('–')} mg/kg/min for this age.`, 'cheat sheet goal');
-    else { const next = Math.min(c.gir + 1.5, goal[1]); sug('Dextrose', `Advance GIR by ~1–2 mg/kg/min (${r(c.gir)} → ~${r(next)}; dextrose ≈ ${r((next * 6 * wt) / num(o.rate), 1)}% at ${o.rate} mL/hr).`, `Below goal ${goal.join('–')} and glucose acceptable.`, 'teaching default (step size); goal from cheat sheet'); }
+    else { const step = age === 'adolescent' ? 1.5 : 2; const next = Math.min(c.gir + step, goal[1]); sug('Dextrose', `Advance GIR by ~${step} mg/kg/min (usual daily step ${AGES[age].girStep}; ${r(c.gir)} → ~${r(next)}; dextrose ≈ ${r((next * 6 * wt) / num(o.rate), 1)}% at ${o.rate} mL/hr).`, `Below goal ${goal.join('–')} and glucose acceptable.`, 'Dell slides (step size); goal from cheat sheet'); }
 
     // Amino acids
     if (ctx.bun != null && ctx.bun >= 30) sug('Amino acids', `Decrease protein by 0.5–1 g/kg/day (${r(c.aa, 2)} → ${r(Math.max(c.aa - 0.75, 0.5), 2)}).`, `BUN ${ctx.bun} ≥ 30.`, 'cheat sheet');
@@ -266,7 +284,7 @@
     // Electrolytes (cheat sheet adjustment table)
     const cur = c.tot;
     if (ctx.k != null) {
-      if (ctx.k < 3.0) sug('Potassium', `Major increase: +1.5–2 mEq/kg/day (now ${r(cur.k, 2)}).`, `K ${ctx.k} (<3.0). Consider 1 mEq/kg bolus if symptomatic.`, 'cheat sheet');
+      if (ctx.k < 3.0) sug('Potassium', `Major increase: +1.5–2 mEq/kg/day (now ${r(cur.k, 2)}).`, `K ${ctx.k} (<3.0). If symptomatic, replace IV per your policy: 0.5–1 mEq/kg/dose infused at 0.3–0.5 mEq/kg/hr (max 1), never pushed.`, 'Dell slides / verify policy');
       else if (ctx.k < 3.5) sug('Potassium', `Minor increase: +1 mEq/kg/day (now ${r(cur.k, 2)}).`, `K ${ctx.k} (<3.5).`, 'cheat sheet');
       else if (ctx.k > (age === 'infant' ? 5.5 : 5.0)) sug('Potassium', 'Remove/reduce K.', `K ${ctx.k} — high.`, 'teaching default');
     }
@@ -294,7 +312,7 @@
 
     // Feeds / wean
     if (c.feedKcalKg > 0) {
-      const goalKcal = AGES[age].kcal[0];
+      const goalKcal = kcalRange(c)[0];
       sug('TPN wean', `Enteral = ${r(c.feedKcalKg, 0)} kcal/kg/day (${Math.round(c.feedPctKcal * 100)}% of total). Aim TPN ≈ ${r(Math.max(goalKcal - c.feedKcalKg, 0), 0)} kcal/kg/day.`, c.feedPctKcal >= 0.75 ? 'Feeds ≥75% — consider stopping TPN.' : c.feedPctKcal >= 0.5 ? 'Feeds ≥50% — wean TPN.' : 'Continue TPN while advancing feeds.', 'commonly cited — VERIFY');
     }
     return out;
@@ -321,6 +339,6 @@
     return S;
   }
 
-  const api = { KCAL, AGES, LYTE_DEFS, RANGES, ADJUST, LAB_REF, IL_ML_PER_G, emptyOrder, cloneOrder, calc, rangeFor, rangeStatus, girStatus, kcalStatus, correctedCa, labFlag, evaluate, suggestNext, steps, r, num };
+  const api = { kcalRange, KCAL, AGES, LYTE_DEFS, RANGES, ADJUST, LAB_REF, IL_ML_PER_G, emptyOrder, cloneOrder, calc, rangeFor, rangeStatus, girStatus, kcalStatus, correctedCa, labFlag, evaluate, suggestNext, steps, r, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TPN = api;
 })(typeof window !== 'undefined' ? window : globalThis);

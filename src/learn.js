@@ -7,9 +7,9 @@
   let prog = {};
   try { prog = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { prog = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(prog)); } catch (e) { /* storage unavailable */ } };
-  const items = C.MODULES.map(m => ({ id: m.id, title: m.title, min: m.min, mod: m })).concat([{ id: 'prac', title: 'Practice cases (t2–t4)', min: 40, practice: true }]);
+  const items = C.MODULES.map(m => ({ id: m.id, title: m.title, min: m.min, mod: m })).concat([{ id: 'prac', title: 'Practice cases (t2–t4)', min: 40, practice: true }, { id: 'gloss', title: 'Glossary', min: 3, glossary: true }]);
   const app = $('#app');
-  app.innerHTML = `<div class="learn"><nav class="side card" aria-label="Modules"><b>Modules</b><div class="prog"><i id="pbar"></i></div><ol id="list"></ol><button id="reset" class="ghost small">Reset my progress</button></nav><section id="body"></section></div>`;
+  app.innerHTML = `<div class="learn"><nav class="side card" aria-label="Modules"><b>Modules</b><div class="prog"><i id="pbar"></i></div><ol id="list"></ol><button id="rec" class="small">Download my Learn record</button> <button id="reset" class="ghost small">Reset my progress</button></nav><section id="body"></section></div>`;
   let cur = 0;
   function side() {
     const done = items.filter(i => prog[i.id] && prog[i.id].done).length;
@@ -22,9 +22,11 @@
     cur = i; side(); const it = items[i], b = $('#body'); b.innerHTML = '';
     window.scrollTo(0, 0);
     if (it.practice) return practice(b);
+    if (it.glossary) return glossary(b);
     const m = it.mod;
     b.innerHTML = `<div class="card"><h1>${esc(m.title)}</h1><div class="small muted">About ${m.min} min</div><h3>Objectives</h3><ul>${m.objectives.map(o => `<li>${esc(o)}</li>`).join('')}</ul></div>
-      <div class="card">${m.body}</div><div id="tasks"></div><div id="case"></div><div id="quiz"></div><div class="actions" id="fin"></div>`;
+      ${m.simple ? '<div class="callout good small">Simple view: electrolytes are hidden until module 7 so you can focus on the big three first.</div>' : ''}
+      <div class="card">${U.abbrify(m.body, C.GLOSSARY)}</div><div id="tasks"></div><div id="case"></div><div id="quiz"></div><div class="actions" id="fin"></div>`;
     m.tasks.forEach((t, k) => task(t, k, m));
     if (m.caseId) U.CaseRunner($('#case', b), C.CASES[m.caseId], { mode: 'learn', onDone: () => mark(m.id, { caseDone: true }) });
     quiz(m);
@@ -46,7 +48,7 @@
       };
     } else {
       host.innerHTML = `<h3>Try it ${k + 1}</h3><p>${t.prompt}</p><div class="ws-host"></div><div class="actions"><button class="primary">Check my order</button>${t.hint ? '<button class="ghost" data-h>Hint</button>' : ''}</div><div class="fb"></div>`;
-      const ws = U.Workspace($('.ws-host', host), { math: true, flags: true, targets: true, lockPatient: true });
+      const ws = U.Workspace($('.ws-host', host), { math: true, flags: true, targets: true, lockPatient: true, simple: !!m.simple });
       ws.setCase({ pt: t.patient, o: t.start, ctx: t.ctx || {}, extra: { fluidGoal: t.fluidGoal, prevOrder: t.prev || null } });
       host.querySelector('button.primary').onclick = () => {
         const s = ws.getState(), c = T.calc(t.patient, s.o), res = t.check(c, s.o), ok = res.every(x => x.ok);
@@ -58,19 +60,31 @@
   }
 
   function quiz(m) {
-    const host = $('#quiz'); let ans = {};
-    host.innerHTML = `<div class="card"><h3 style="margin-top:0">Quick quiz</h3>${m.quiz.map((q, qi) => `<div data-q="${qi}" style="margin-bottom:14px"><p><b>${qi + 1}.</b> ${esc(q.q)}</p>${q.opts.map((o, oi) => `<label class="opt"><input type="radio" name="q${qi}" value="${oi}"><span>${esc(o)}</span></label>`).join('')}<div class="why small"></div></div>`).join('')}<button class="primary" id="qs">Score quiz</button><span id="qr" style="margin-left:10px"></span></div>`;
+    const host = $('#quiz'); const qs = m.quiz.map(U.shuffleQ);
+    host.innerHTML = `<div class="card"><h3 style="margin-top:0">Quick quiz</h3>${qs.map((q, qi) => `<div data-q="${qi}" style="margin-bottom:14px"><p><b>${qi + 1}.</b> ${esc(q.q)}</p>${q.opts.map((o, oi) => `<label class="opt"><input type="radio" name="q${qi}" value="${oi}"><span>${esc(o)}</span></label>`).join('')}<div class="why small"></div></div>`).join('')}<button class="primary" id="qs">Score quiz</button><span id="qr" style="margin-left:10px"></span></div>`;
     $('#qs', host).onclick = () => {
       let got = 0;
-      m.quiz.forEach((q, qi) => {
+      qs.forEach((q, qi) => {
         const box = $(`[data-q="${qi}"]`, host), sel = box.querySelector('input:checked');
         box.querySelectorAll('.opt').forEach((l, oi) => { l.classList.remove('right', 'wrong'); if (oi === q.ans) l.classList.add('right'); else if (sel && +sel.value === oi) l.classList.add('wrong'); });
         if (sel && +sel.value === q.ans) got++;
         $('.why', box).textContent = sel ? q.why : 'Pick an answer — ' + q.why;
       });
-      $('#qr').innerHTML = `<b class="${got === m.quiz.length ? 'pass' : ''}">${got}/${m.quiz.length}</b>`;
-      mark(m.id, { quiz: got + '/' + m.quiz.length });
+      $('#qr').innerHTML = `<b class="${got === qs.length ? 'pass' : ''}">${got}/${qs.length}</b>`;
+      mark(m.id, { quiz: got + '/' + qs.length });
     };
+  }
+
+  function glossary(b) {
+    b.innerHTML = `<div class="card"><h1>Glossary</h1><dl>${Object.keys(C.GLOSSARY).sort().map(k => `<dt><b>${esc(k)}</b></dt><dd>${esc(C.GLOSSARY[k])}</dd>`).join('')}</dl></div>`;
+  }
+
+  function record() {
+    const lines = ['TPN Lab: Learn completion record', 'Completion is not competence. This record shows activity in this browser only.', 'Generated: ' + new Date().toLocaleString(), ''];
+    C.MODULES.forEach((m, i) => { const p = prog[m.id] || {}; const tasks = m.tasks.map((t, k) => p['t' + k] ? 'done' : 'not done').join(', ') || 'none';
+      lines.push(`${i + 1}. ${m.title}: ${p.done ? 'marked complete' : 'not complete'}; tasks: ${tasks}; quiz: ${p.quiz || 'not taken'}${m.caseId ? '; case: ' + (p.caseDone ? 'finished' : 'not finished') : ''}`); });
+    lines.push('Practice cases: ' + ((prog.prac || {}).done ? 'finished' : 'not finished'));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' })); a.download = 'tpn-lab-learn-record.txt'; document.body.appendChild(a); a.click(); a.remove();
   }
 
   function practice(b) {
@@ -81,6 +95,7 @@
   }
 
   $('#list').addEventListener('click', (e) => { const x = e.target.closest('button'); if (x) show(+x.dataset.i); });
+  $('#rec').onclick = record;
   $('#reset').onclick = () => { if (confirm('Clear your saved Learn progress in this browser?')) { prog = {}; save(); show(0); } };
   show(0);
 })();

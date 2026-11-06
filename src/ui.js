@@ -13,7 +13,7 @@
   /* ---------------- Workspace ---------------- */
   function Workspace(rootEl, cfg) {
     cfg = Object.assign({ blind: false, math: false, flags: true, targets: true, lockPatient: false, lockAccess: false, showRef: true }, cfg || {});
-    const S = { pt: { wt: '', age: 'infant' }, o: T.emptyOrder(), ctx: {}, extra: {}, unit: 'kg', raw: {} };
+    const S = { pt: { wt: '', age: 'infant', years: '' }, o: T.emptyOrder(), ctx: {}, extra: {}, unit: 'kg', raw: {} };
     let readOnly = false;
 
     const wtN = () => num(S.pt.wt), litersDay = () => num(S.o.rate) * 24 / 1000;
@@ -31,17 +31,18 @@
       rootEl.querySelector('.ws-in').innerHTML = `
       <div class="grp"><div class="grp-t">Patient</div><div class="row two">
         ${inputField('pt.wt', 'Dosing weight', 'kg', { ph: 'e.g. 5.2' })}
-        <div><label for="f-pt.age">Age group</label><select id="f-pt.age" data-k="pt.age">${Object.keys(T.AGES).map(a => `<option value="${a}" ${S.pt.age === a ? 'selected' : ''}>${T.AGES[a].label}</option>`).join('')}</select></div></div></div>
+        <div><label for="f-pt.age">Age group</label><select id="f-pt.age" data-k="pt.age">${Object.keys(T.AGES).map(a => `<option value="${a}" ${S.pt.age === a ? 'selected' : ''}>${T.AGES[a].label}</option>`).join('')}</select></div></div>
+        ${S.pt.age === 'child' ? `<div class="row two" style="margin-top:6px">${inputField('pt.years', 'Age', 'years (optional)', { ph: 'e.g. 3' })}</div>` : ''}</div>
       <div class="grp"><div class="grp-t">TPN</div><div class="row">
         ${inputField('o.rate', 'TPN rate', 'mL/hr')}${inputField('o.dex', 'Dextrose', '%')}${inputField('o.aa', 'Amino acids', 'g/kg/day')}${inputField('o.il', 'Lipid (20%)', 'g/kg/day')}</div>
-        <label class="chk"><input type="checkbox" data-k="o.cysteine" ${S.o.cysteine ? 'checked' : ''}> L-cysteine added</label>
+        <label class="chk"><input type="checkbox" data-k="o.cysteine" ${S.o.cysteine ? 'checked' : ''}> L-cysteine added <span class="unit" id="cysmg"></span></label>
         <div class="row two" style="margin-top:6px">${inputField('o.carnitine', 'L-carnitine', 'mg/kg/day')}
           <div><label for="f-o.access">Access</label><select id="f-o.access" data-k="o.access"><option value="central" ${S.o.access === 'central' ? 'selected' : ''}>Central</option><option value="peripheral" ${S.o.access === 'peripheral' ? 'selected' : ''}>Peripheral</option></select></div></div>
-        <label class="chk"><input type="checkbox" data-k="o.calciumInfusion" ${S.o.calciumInfusion ? 'checked' : ''}> Calcium chloride infusion running</label></div>
-      <div class="grp"><div class="grp-t">Other fluids &amp; feeds</div><div class="row">${inputField('o.ivf', 'IVF rate', 'mL/hr')}${inputField('o.feeds.n', 'Feeds / 24 h', '#')}${inputField('o.feeds.vol', 'Volume / feed', 'mL')}${inputField('o.feeds.kcalOz', 'Density', 'kcal/30 mL')}</div></div>
-      <div class="grp"><div class="grp-t">Electrolytes <span class="seg" role="group" aria-label="Electrolyte entry units"><button type="button" data-unit="kg" aria-pressed="${u}">per kg/day</button><button type="button" data-unit="L" aria-pressed="${!u}">bag mEq/L</button></span></div>
+        ${cfg.simple ? '' : `<label class="chk"><input type="checkbox" data-k="o.calciumInfusion" ${S.o.calciumInfusion ? 'checked' : ''}> Calcium chloride infusion running</label>`}</div>
+      <div class="grp"><div class="grp-t">Other fluids &amp; feeds</div><div class="row">${inputField('o.ivf', 'Other IV fluids (drips/flushes)', 'mL/hr')}${inputField('o.feeds.n', 'Feeds / 24 h', '#')}${inputField('o.feeds.vol', 'Volume / feed', 'mL')}${inputField('o.feeds.kcalOz', 'Density', 'kcal/30 mL')}</div></div>
+      ${cfg.simple ? '<div class="small muted" style="margin-top:10px">Electrolytes are hidden in these early modules; you will add them in module 7.</div>' : `<div class="grp"><div class="grp-t">Electrolytes <span class="seg" role="group" aria-label="Electrolyte entry units"><button type="button" data-unit="kg" aria-pressed="${u}">per kg/day</button><button type="button" data-unit="L" aria-pressed="${!u}">bag mEq/L</button></span></div>
         <div class="lytes">${ly(T.LYTE_DEFS)}</div>
-        <div class="small muted" style="margin-top:6px">${u ? 'Dose entered per kg/day; the right column shows the bag concentration.' : 'Entering the bag label (per L); the right column shows the resulting dose per kg/day.'} Phosphate is mmol; the rest mEq.</div></div>`;
+        <div class="small muted" style="margin-top:6px">${u ? 'Dose entered per kg/day; the right column shows the bag concentration.' : 'Entering the bag label (per L); the right column shows the resulting dose per kg/day.'} Phosphate is mmol; the rest mEq.</div></div>`}`;
       applyLock();
     }
     function applyLock() {
@@ -54,10 +55,11 @@
     }
 
     function renderOut() {
-      const pt = { wt: wtN(), age: S.pt.age }, o = S.o, blind = cfg.blind;
+      const pt = { wt: wtN(), age: S.pt.age, years: S.pt.years }, o = S.o, blind = cfg.blind;
       const ev = T.evaluate(pt, o, S.ctx, S.extra), c = ev.calc, age = c.age, A = T.AGES[age];
       // bag labels beside lyte inputs
       T.LYTE_DEFS.forEach(d => { const e = rootEl.querySelector(`[data-bag="${d.id}"]`); if (!e) return; e.textContent = S.unit === 'kg' ? (c.perLiter[d.id] > 0 ? f(c.perLiter[d.id], 0) + '/L' : '') : (c.lytes[d.id] > 0 ? f(c.lytes[d.id], 2) + '/kg' : ''); });
+      const cm = rootEl.querySelector('#cysmg'); if (cm) cm.textContent = c.cysteineMg > 0 ? '(' + f(c.cysteineMg, 0) + ' mg/day at 40 mg/g AA)' : '';
       const showT = cfg.targets && !blind;
       const gs = T.girStatus(c), ks = T.kcalStatus(c);
       const tile = (k, v, s, cls) => `<div class="tile ${showT && cls ? cls : ''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
@@ -78,12 +80,12 @@
         const fl = ev.flags.slice().sort((a, b) => order[a.sev] - order[b.sev]);
         return fl.length ? fl.map(x => `<div class="flag ${x.sev}"><b>${x.sev === 'crit' ? '⛔ ' : x.sev === 'warn' ? '⚠ ' : 'ℹ '}${esc(x.text)}</b><div class="why">${esc(x.why)}</div></div>`).join('') : '<div class="callout good">No safety flags for the current order.</div>';
       })() : '';
-      const mathHtml = cfg.math ? `<details class="math" open><summary>Show the math (with your numbers)</summary>${T.steps(pt, o).map(s => `<div class="step"><div class="t">${esc(s.t)}</div><div class="f">${esc(s.f)}</div><div class="n">${esc(s.n)}${s.n2 ? '<br>' + esc(s.n2) : ''}</div>${s.why ? `<div class="why">${esc(s.why)}</div>` : ''}</div>`).join('')}</details>` : '';
+      const mathHtml = cfg.math ? `<details class="math" open><summary>Show the math (with your numbers)</summary>${T.steps(pt, o).filter(s => !cfg.simple || !/Electrolytes|Potassium from|Calcium :/.test(s.t)).map(s => `<div class="step"><div class="t">${esc(s.t)}</div><div class="f">${esc(s.f)}</div><div class="n">${esc(s.n)}${s.n2 ? '<br>' + esc(s.n2) : ''}</div>${s.why ? `<div class="why">${esc(s.why)}</div>` : ''}</div>`).join('')}</details>` : '';
       rootEl.querySelector('.ws-out').innerHTML = `
       <div class="sticky-sum"><span>GIR ${f(c.gir)}</span><span>${f(c.totalKcalKg, 0)} kcal/kg</span><span>${f(c.totalFluids, 0)} mL/kg${S.extra.fluidGoal ? ' / ' + S.extra.fluidGoal : ''}</span>${(!blind && crits) ? `<span style="color:var(--crit)">⛔ ${crits}</span>` : ''}</div>
       <div class="tiles">
         ${tile('GIR', f(c.gir), `mg/kg/min ${girBadge}${showT ? `<br>goal ${A.gir.join('–')}` : ''}`, gs !== 'none' ? gs : '')}
-        ${tile('Total kcal/kg', f(c.totalKcalKg, 0), `PN ${f(c.tpnKcalKg, 0)} + enteral ${f(c.feedKcalKg, 0)}${showT ? `<br>goal ${A.kcal.join('–')}${A.verifyKcal ? ' (verify)' : ''}` : ''}`, ks !== 'none' ? ks : '')}
+        ${tile('Total kcal/kg', f(c.totalKcalKg, 0), `PN ${f(c.tpnKcalKg, 0)} + enteral ${f(c.feedKcalKg, 0)}${showT ? `<br>goal ${T.kcalRange(c).join('–')}` : ''}`, ks !== 'none' ? ks : '')}
         ${tile('Total fluids', f(c.totalFluids, 0), `mL/kg/day incl. lipid${S.extra.fluidGoal && showT ? `<br>goal ≤ ${S.extra.fluidGoal}` : ''}`, fluidOver ? 'high' : (S.extra.fluidGoal && c.totalFluids > 0 ? 'ok' : ''))}
         ${tile('Protein / Lipid', `${f(c.aa, 2)} / ${f(c.il, 2)}`, 'g/kg/day', '')}
         ${tile('Est. osmolarity', f(c.osm, 0), `mOsm/L (rough)${o.access === 'peripheral' && showT ? '<br>periph limit ~900' : ''}`, o.access === 'peripheral' && c.osm > 900 ? 'crit' : '')}
@@ -96,13 +98,13 @@
       <div class="card"><h3 style="margin-top:0">Fluids (mL/kg/day)</h3><div class="scroll"><table>
           <tr><td>TPN</td><td class="n">${f(c.tpnMlKg, 1)}</td></tr><tr><td>IVF</td><td class="n">${f(c.ivfMlKg, 1)}</td></tr><tr><td>Feeds</td><td class="n">${f(c.feedMlKg, 1)}</td></tr><tr><td>Lipid volume</td><td class="n">${f(c.lipidMlKg, 1)}</td></tr>
           <tr><td><b>Total</b> <span class="unit">(cheat-sheet total ${f(c.sheetTotalFluids, 1)} + lipid)</span></td><td class="n"><b>${f(c.totalFluids, 1)}</b></td></tr></table></div></div>
-      <div class="card"><h3 style="margin-top:0">Electrolytes</h3><div class="scroll"><table>
+      ${cfg.simple ? '' : `<div class="card"><h3 style="margin-top:0">Electrolytes</h3><div class="scroll"><table>
         <tr><th>Total</th><th class="n">Dose</th><th class="n">Bag /L</th><th>${(!blind || cfg.showRef) ? 'Reference' : ''}</th></tr>
         ${lyRow('Sodium', 'na', 'mEq', c.perLiter.na)}${lyRow('Potassium', 'k', 'mEq', c.perLiter.k)}
         <tr><td>Chloride</td><td class="n">${f(c.tot.cl, 2)} <span class="unit">mEq/kg/d</span></td><td class="n">${c.perLiter.cl > 0 ? f(c.perLiter.cl, 0) : '—'}</td><td></td></tr>
         <tr><td>Acetate</td><td class="n">${f(c.tot.acetate, 2)} <span class="unit">mEq/kg/d</span></td><td class="n">${c.perLiter.acetate > 0 ? f(c.perLiter.acetate, 0) : '—'}</td><td></td></tr>
         ${lyRow('Phosphate', 'phos', 'mmol', c.perLiter.phos)}${lyRow('Calcium', 'ca', 'mEq', c.perLiter.ca)}${lyRow('Magnesium', 'mg', 'mEq', c.perLiter.mg)}</table></div>
-        <div class="small muted" style="margin-top:8px">Ca:Phos (molar) <b class="mono">${c.caPRatio == null ? '—' : f(c.caPRatio, 2) + ' : 1'}</b> · Phos <b class="mono">${f(c.phosPer100, 2)}</b> mmol/100 mL${(!blind || cfg.showRef) ? ' (keep &lt;2)' : ''}</div></div>
+        <div class="small muted" style="margin-top:8px">Ca:Phos (molar) <b class="mono">${c.caPRatio == null ? '—' : f(c.caPRatio, 2) + ' : 1'}</b> · Phos <b class="mono">${f(c.phosPer100, 2)}</b> mmol/100 mL${(!blind || cfg.showRef) ? ' (keep &lt;2)' : ''}</div></div>`}
       ${(cfg.flags && !blind) ? `<div class="card"><h3 style="margin-top:0">Safety &amp; considerations ${crits ? `<span class="badge b-crit">${crits} critical</span>` : ''}</h3>${flagsHtml}</div>` : ''}
       ${mathHtml ? `<div class="card">${mathHtml}</div>` : ''}`;
     }
@@ -119,6 +121,7 @@
         if (S.unit === 'L' && (k === 'o.rate' || k === 'pt.wt')) canonFromRaw();
         else if (S.unit === 'kg' && (k === 'o.rate' || k === 'pt.wt')) { /* dose fixed */ }
       }
+      if (k === 'pt.age') { renderIn(); }
       renderOut(); api.emit();
     };
     rootEl.addEventListener('input', onInput); rootEl.addEventListener('change', (e) => { if (e.target.tagName === 'SELECT') onInput(e); });
@@ -132,10 +135,10 @@
     const api = {
       cfg, emit() { listeners.forEach(fn => fn(api)); },
       onChange(fn) { listeners.push(fn); },
-      getState() { canonFromRaw(); return { pt: { wt: wtN(), age: S.pt.age }, o: T.cloneOrder(S.o) }; },
-      calc() { canonFromRaw(); return T.calc({ wt: wtN(), age: S.pt.age }, S.o); },
+      getState() { canonFromRaw(); return { pt: { wt: wtN(), age: S.pt.age, years: S.pt.years }, o: T.cloneOrder(S.o) }; },
+      calc() { canonFromRaw(); return T.calc({ wt: wtN(), age: S.pt.age, years: S.pt.years }, S.o); },
       setCase(p) {
-        if (p.pt) S.pt = { wt: p.pt.wt === 0 ? '' : p.pt.wt, age: p.pt.age };
+        if (p.pt) S.pt = { wt: p.pt.wt === 0 ? '' : p.pt.wt, age: p.pt.age, years: p.pt.years == null ? '' : p.pt.years };
         if (p.o) S.o = T.cloneOrder(p.o);
         if (p.ctx !== undefined) S.ctx = p.ctx || {};
         if (p.extra !== undefined) S.extra = p.extra || {};
@@ -148,6 +151,27 @@
       refresh() { renderOut(); }
     };
     return api;
+  }
+
+
+  /** Shuffle a multiple-choice question's options and remap the answer index (avoids answer-position cueing). */
+  function shuffleQ(q) {
+    const idx = q.opts.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+    return Object.assign({}, q, { opts: idx.map(i => q.opts[i]), ans: idx.indexOf(q.ans), origOpts: q.opts, origAns: q.ans });
+  }
+  /** Wrap the first use of each glossary term in an <abbr> tooltip (text nodes only). */
+  function abbrify(html, gl) {
+    const used = {}; const terms = Object.keys(gl).sort((a, b) => b.length - a.length);
+    return html.split(/(<[^>]+>)/).map(part => {
+      if (part.charAt(0) === '<') return part;
+      terms.forEach(t => {
+        if (used[t]) return;
+        const re = new RegExp('(^|[^A-Za-z0-9])(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![A-Za-z0-9])');
+        if (re.test(part)) { used[t] = 1; part = part.replace(re, (m, a, b) => a + '<abbr title="' + esc(gl[t]) + '">' + b + '</abbr>'); }
+      });
+      return part;
+    }).join('');
   }
 
   /* ---------------- Labs panel ---------------- */
@@ -198,7 +222,7 @@
       const i = st.idx, committed = !!st.orders[i], last = i === cs.days.length - 1;
       $('.actions', rootEl).innerHTML = committed
         ? `${!last ? `<button class="primary" data-act="next">Go to Day ${cs.days[i + 1].n} →</button>` : `<button class="primary" data-act="summary">See case summary</button>`}<button data-act="redo" class="ghost">Redo this day (clears later days)</button>`
-        : `<button class="primary" data-act="commit">Commit order for Day ${cs.days[i].n}</button>${!learn || true ? '<button data-act="suggest" class="ghost">Show teaching-default suggestions</button><button data-act="points" class="ghost">Teaching points</button>' : ''}`;
+        : `<button class="primary" data-act="commit">Commit order for Day ${cs.days[i].n}</button>${!learn ? '<button data-act="suggest" class="ghost">Show teaching-default suggestions</button><button data-act="points" class="ghost">Teaching points</button>' : '<span class="small muted">Make your own call first. Suggestions and teaching points unlock after you commit.</span>'}`;
     }
     function feedbackHtml(i) {
       const d = cs.days[i], fl = st.flags[i] || [];
@@ -241,5 +265,5 @@
     return { load, state: st, ws };
   }
 
-  root.TPNUI = { esc, f, $, $$, Workspace, labsHtml, CaseRunner, RANGE_TXT };
+  root.TPNUI = { esc, f, $, $$, Workspace, labsHtml, CaseRunner, RANGE_TXT, shuffleQ, abbrify };
 })(typeof window !== 'undefined' ? window : globalThis);

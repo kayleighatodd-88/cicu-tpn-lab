@@ -35,7 +35,7 @@
       <h3>Formulas</h3><ul><li>GIR (mg/kg/min) = dextrose % × mL/hr ÷ weight ÷ 6</li><li>Dextrose 3.4 kcal/g · protein 4 kcal/g · lipid 10 kcal/g (20% = 2 kcal/mL; 5 mL per g)</li><li>mEq/kg/day = mEq/L × (mL/hr × 24 ÷ 1000) ÷ weight; bag mEq/L = dose × weight ÷ L/day</li><li>Total K = KCl + K-acetate + 1.5 × K-phos (mmol)</li><li>Ca gluconate mEq ÷ 2 = mmol (match Ca:Phos about 1:1)</li></ul>
       <h3>Goals</h3><div class="scroll"><table><tr><th></th><th class="n">Infant</th><th class="n">Child</th><th class="n">Adolescent</th></tr>
         <tr><td>GIR (mg/kg/min)</td>${['infant', 'child', 'adolescent'].map(a => `<td class="n">${T.AGES[a].gir.join('–')}</td>`).join('')}</tr>
-        <tr><td>Total kcal/kg/day</td>${['infant', 'child', 'adolescent'].map(a => `<td class="n">${T.AGES[a].kcal.join('–')}${T.AGES[a].verifyKcal ? '*' : ''}</td>`).join('')}</tr>
+        <tr><td>Total kcal/kg/day</td>${['infant', 'child', 'adolescent'].map(a => `<td class="n">${T.AGES[a].kcal.join('–')}</td>`).join('')}</tr>
         ${row('na', 'Na (mEq/kg/d)', '')}${row('k', 'K (mEq/kg/d)', '')}${row('phos', 'Phos (mmol)', 'see units on dashboard')}${row('ca', 'Ca (mEq)', '')}${row('mg', 'Mg (mEq)', '')}</table></div><p class="small muted">*Child/adolescent kcal targets and some ranges need local verification.</p>
       <h3>Rules that gate advancement</h3><ul><li>TG 200–300: hold advancing lipid · TG &gt;300: hold lipid</li><li>BUN ≥30: decrease protein 0.5–1 g/kg/day</li><li>L-carnitine 10 mg/kg/day (infants), up to 20</li><li>L-cysteine required if &lt;1 year</li><li>Phos &lt;2 mmol/100 mL; no phos if on a CaCl drip</li></ul></div>`;
   }

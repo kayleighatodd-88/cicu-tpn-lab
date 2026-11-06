@@ -27,7 +27,7 @@ const K = C.CHECK.CASES, S = C.CHECK.scoreCase;
   const r = S(cs, good);
   console.log('K2 ideal:', r.earned.toFixed(1), '/', r.max, 'GIR', T.r(r.calc.gir), 'prev', T.r(p.gir), 'kcal', T.r(r.calc.totalKcalKg), 'fluids', T.r(r.calc.totalFluids), 'Ca:P', T.r(r.calc.caPRatio, 2));
   ok(r.earned / r.max >= 0.85 && r.crits.length === 0, 'K2 ideal advancement should pass');
-  const bad = set(cs.start, { il: 2.5, dex: 20 });  // advances lipid at TG 240 and jumps GIR
+  const bad = set(cs.start, { il: 2.5, dex: 26 });  // advances lipid at TG 240 and jumps GIR
   const rb = S(cs, bad);
   ok(rb.crits.some(c => c.id === 'ilAdv'), 'K2 lipid advance with TG 240 must be critical');
   ok(rb.crits.some(c => c.id === 'girJump'), 'K2 big GIR jump must be critical');
@@ -64,12 +64,14 @@ const solutions = {
   m5: { carnitine: 10, il: 2 },
   m6: { dex: 18, aa: 2.5, il: 1.5, rate: 12 },
   m7: { lytes: { naCl: 2, kCl: 2, kAc: 0 } },
-  m8: { lytes: { ca: 1, kPhos: 0.5 } }
+  m8: { lytes: { ca: 1, kPhos: 0.5 } },
+  m11: [{ rate: 9.5, dex: 20, aa: 3, il: 2, cysteine: true }, { rate: 5, dex: 25, aa: 2.5, il: 1 }]
 };
 C.MODULES.forEach(m => {
   m.tasks.forEach((t, i) => {
     if (t.type === 'numeric') { ok(Number.isFinite(t.answer()), `${m.id} numeric ${i}`); return; }
-    const sol = solutions[m.id]; ok(sol, `${m.id} has a test solution`);
+    let sol = solutions[m.id]; ok(sol, `${m.id} has a test solution`);
+    if (Array.isArray(sol)) sol = sol[m.tasks.slice(0, i).filter(x => x.type === 'order').length];
     const o = set(t.start, sol); const res = t.check(T.calc(t.patient, o), o);
     ok(res.every(x => x.ok), `${m.id} task solvable: ` + res.filter(x => !x.ok).map(x => x.msg).join('; '));
     // and the untouched start must NOT already pass
@@ -92,4 +94,12 @@ C.MODULES.forEach(m => {
   function LAB_KEYS_OK(l) { return C.LAB_ORDER.every(k => l[k] != null); }
 }
 
+
+// ---------- Answer-length cueing: the correct option should not be systematically the longest ----------
+{
+  const qs = [...C.CHECK.MCQ]; C.MODULES.forEach(m => (m.quiz || []).forEach(q => qs.push(q)));
+  const longest = qs.filter(q => { const L = q.opts.map(o => o.length), a = L[q.ans]; return a === Math.max(...L) && L.filter(x => x === a).length === 1; }).length;
+  ok(longest / qs.length <= 0.35, `correct answer is uniquely longest in ${longest}/${qs.length} questions`);
+  console.log('answer-length cue:', longest + '/' + qs.length);
+}
 console.log(`content tests passed (${n} assertions)`);

@@ -17,9 +17,9 @@ const url = (p) => 'file://' + path.resolve(__dirname, '..', p);
     await pg.click('[data-tab="ref"]');
     // Learn
     await pg.goto(url('learn.html'));
-    assert.ok(await pg.locator('#list button').count() === 11);
+    assert.ok(await pg.locator('#list button').count() === 13);
     await pg.click('#list button >> nth=2'); await pg.fill('[data-k="o.dex"]', '12'); await pg.click('button.primary:has-text("Check my order")');
-    for (const i of [0, 3, 4, 5, 6, 7, 8, 9, 10]) { await pg.click(`#list button >> nth=${i}`); }
+    for (const i of [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) { await pg.click(`#list button >> nth=${i}`); }
     await pg.click('#list button >> nth=8'); await pg.fill('[data-k="o.rate"]', '14'); await pg.click('[data-act="commit"]'); await pg.click('[data-act="next"]'); await pg.waitForSelector('text=Day 2');
     // Check-off full run
     await pg.goto(url('check.html')); await pg.fill('#nm', 'Test'); await pg.click('#go');
